@@ -1,0 +1,46 @@
+import requests
+from rest_framework.response import Response
+from rest_framework.views import APIView
+
+from .models import CatalogBook
+from .serializers import CatalogBookSerializer
+from django.db import models
+
+BOOK_SERVICE_URL = "http://book-service:8000"
+
+
+class HealthCheck(APIView):
+    def get(self, request):
+        return Response({"service": "catalog-service", "status": "ok"})
+
+
+class CatalogBookList(APIView):
+    def get(self, request):
+        serializer = CatalogBookSerializer(CatalogBook.objects.all(), many=True)
+        return Response(serializer.data)
+
+
+class CatalogSync(APIView):
+    def post(self, request):
+        try:
+            response = requests.get(f"{BOOK_SERVICE_URL}/books/", timeout=5)
+            response.raise_for_status()
+        except requests.RequestException:
+            return Response({"error": "Book service unavailable"}, status=503)
+
+        synced = []
+        for book in response.json():
+            catalog_book, _ = CatalogBook.objects.update_or_create(
+                external_book_id=book["id"],
+                defaults={
+                    "title": book["title"],
+                    "author": book["author"],
+                    "price": book["price"],
+                    "stock": book["stock"],
+                },
+            )
+            synced.append(catalog_book)
+
+        serializer = CatalogBookSerializer(synced, many=True)
+        return Response(serializer.data)
+    

@@ -1,0 +1,216 @@
+{% extends "base.html" %}
+{% block title %}Gio hang | BookShop{% endblock %}
+{% block nav_cart %}active{% endblock %}
+
+{% block content %}
+<div class="flex mt-8" style="margin-bottom:12px; justify-content:space-between; align-items:center;">
+    <div>
+        {% if customer and customer.name %}
+        <div style="font-size:18px; font-weight:600;">{{ customer.name }}</div>
+        {% else %}
+        <div style="font-size:18px; font-weight:600;">Khach hang #{{ customer_id }}</div>
+        {% endif %}
+        <div class="muted" style="font-size:13px;">
+            {{ customer.email|default:"" }} - {{ item_count }} san pham - <span class="price">{{ total_price }} VND</span>
+        </div>
+    </div>
+    <a class="btn btn-ghost btn-sm" href="/customers/">Danh sach khach hang</a>
+</div>
+
+<div class="page-grid">
+    <div>
+        <div class="card" style="margin-bottom:12px;">
+            <div class="card-title" style="display:flex; justify-content:space-between; align-items:center;">
+                <span>Gio hang</span>
+                <span class="tag">{{ item_count }} san pham</span>
+            </div>
+
+            <div class="card-body" style="padding-bottom:0;">
+                <form method="post" action="/customer/cart/{{ customer_id }}/items/add/">
+                    {% csrf_token %}
+                    <input type="hidden" name="cart_id" value="{{ cart_id|default:'' }}">
+                    <div class="form-row" style="align-items:flex-end;">
+                        <div class="field" style="margin-bottom:0;">
+                            <label class="lbl">Chon sach</label>
+                            <select class="select" name="book_id" required>
+                                <option value="">-- Chon sach --</option>
+                                {% for book in books %}
+                                <option value="{{ book.id }}">{{ book.title }} - {{ book.effective_price }} VND</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div style="display:flex; gap:8px; align-items:flex-end;">
+                            <div class="field" style="margin-bottom:0; width:80px;">
+                                <label class="lbl">SL</label>
+                                <input class="input" type="number" min="1" name="quantity" value="1" style="padding:8px;">
+                            </div>
+                            <button class="btn btn-primary" type="submit" style="white-space:nowrap;">Them vao gio</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+
+            {% if items %}
+            <div style="margin-top:4px;">
+                {% for item in items %}
+                <div style="display:flex; align-items:center; gap:12px; padding:14px 20px; border-top:1px solid var(--line);">
+                    <div style="flex:1; min-width:0;">
+                        <div class="fw-600" style="margin-bottom:2px;">{{ item.book_title }}</div>
+                        <div class="muted" style="font-size:13px;">{{ item.price }} VND / cuon</div>
+                    </div>
+                    <div style="text-align:right; margin-right:12px;">
+                        <div class="price fw-600">{{ item.line_total }} VND</div>
+                        <div class="muted" style="font-size:12px;">x{{ item.quantity }}</div>
+                    </div>
+                    <form method="post" action="/customer/cart/{{ customer_id }}/items/{{ item.id }}/update/" style="display:flex; gap:6px; align-items:center;">
+                        {% csrf_token %}
+                        <input class="input" type="number" min="0" name="quantity" value="{{ item.quantity }}" style="width:56px; padding:6px 8px; text-align:center;">
+                        <button class="btn btn-ghost btn-sm" type="submit">Cap nhat</button>
+                    </form>
+                    <form method="post" action="/customer/cart/{{ customer_id }}/items/{{ item.id }}/delete/">
+                        {% csrf_token %}
+                        <button class="btn btn-danger btn-sm" type="submit">Xoa</button>
+                    </form>
+                </div>
+                {% endfor %}
+                <div style="padding:12px 20px; text-align:right; border-top:1px solid var(--line); background:#fafafa; border-radius:0 0 4px 4px;">
+                    <span class="muted" style="font-size:13px;">Tong cong: </span>
+                    <span class="price fw-600" style="font-size:16px;">{{ total_price }} VND</span>
+                </div>
+            </div>
+            {% else %}
+            <div class="empty" style="border-top:1px solid var(--line);">Gio hang trong. Them sach de bat dau.</div>
+            {% endif %}
+        </div>
+
+        <div class="card" style="margin-bottom:12px;">
+            <div class="card-title" style="display:flex; justify-content:space-between; align-items:center;">
+                <span>Don hang</span>
+                <span class="tag">{{ order_count }} don</span>
+            </div>
+            {% if orders %}
+            {% for order in orders %}
+            <div style="padding:14px 20px; border-top:1px solid var(--line);">
+                <div class="flex" style="justify-content:space-between; margin-bottom:6px;">
+                    <span class="fw-600">Don #{{ order.id }}</span>
+                    <span class="tag">{{ order.status }}</span>
+                </div>
+                <div class="muted" style="font-size:13px;">
+                    {{ order.payment_method|upper }} - {{ order.shipping_method }} - <span class="price">{{ order.total_amount }} VND</span>
+                </div>
+            </div>
+            {% endfor %}
+            {% else %}
+            <div class="empty" style="border-top:1px solid var(--line);">Chua co don hang nao.</div>
+            {% endif %}
+        </div>
+
+        <div class="card">
+            <div class="card-title" style="display:flex; justify-content:space-between; align-items:center;">
+                <span>Danh gia</span>
+                <span class="tag">{{ review_count }} danh gia</span>
+            </div>
+            <div class="card-body">
+                <form method="post" action="/customer/cart/{{ customer_id }}/review/">
+                    {% csrf_token %}
+                    <div class="form-row">
+                        <div class="field">
+                            <label class="lbl">Sach</label>
+                            <select class="select" name="book_id" required {% if not reviewable_books %}disabled{% endif %}>
+                                <option value="">-- Chon sach --</option>
+                                {% for book in reviewable_books %}
+                                <option value="{{ book.id }}">{{ book.title }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="field">
+                            <label class="lbl">Diem (1-5)</label>
+                            <select class="select" name="rating">
+                                <option value="5">5</option>
+                                <option value="4">4</option>
+                                <option value="3">3</option>
+                                <option value="2">2</option>
+                                <option value="1">1</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="field">
+                        <label class="lbl">Nhan xet</label>
+                        <textarea class="textarea" name="comment" placeholder="Viet nhan xet..."></textarea>
+                    </div>
+                    {% if not reviewable_books %}
+                    <div class="msg-warning" style="margin-bottom:12px;">Chi co the danh gia nhung sach da mua trong don hang da xac nhan.</div>
+                    {% endif %}
+                    <button class="btn btn-primary" type="submit">Gui danh gia</button>
+                </form>
+
+                {% if reviews %}
+                <div style="margin-top:16px; border-top:1px solid var(--line); padding-top:16px;">
+                    {% for review in reviews %}
+                    <div style="padding:10px 0; border-bottom:1px solid var(--line);">
+                        <div class="flex">
+                            <span class="fw-600">Sach #{{ review.book_id }}</span>
+                            <span class="tag">{{ review.rating }}/5</span>
+                        </div>
+                        {% if review.comment %}<div class="muted" style="font-size:13px; margin-top:4px;">{{ review.comment }}</div>{% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div>
+        <div class="card" style="margin-bottom:12px;">
+            <div class="card-title">Dat hang</div>
+            <div class="card-body">
+                {% if items %}
+                <form method="post" action="/customer/cart/{{ customer_id }}/order/">
+                    {% csrf_token %}
+                    <div class="field">
+                        <label class="lbl">Phuong thuc thanh toan</label>
+                        <select class="select" name="payment_method">
+                            <option value="cod">COD</option>
+                            <option value="banking">Chuyen khoan</option>
+                        </select>
+                    </div>
+                    <div class="field">
+                        <label class="lbl">Van chuyen</label>
+                        <select class="select" name="shipping_method">
+                            <option value="standard">Tieu chuan</option>
+                            <option value="express">Nhanh</option>
+                        </select>
+                    </div>
+                    <div class="field">
+                        <label class="lbl">Dia chi giao hang</label>
+                        <textarea class="textarea" name="shipping_address" required>Ha Noi</textarea>
+                    </div>
+                    <div style="padding:12px; background:#fff3f0; border-radius:4px; margin-bottom:12px;">
+                        <div class="muted" style="font-size:13px; margin-bottom:2px;">Tong thanh toan</div>
+                        <div class="price fw-600" style="font-size:18px;">{{ total_price }} VND</div>
+                    </div>
+                    <button class="btn btn-primary btn-block" type="submit">Dat hang ngay</button>
+                </form>
+                {% else %}
+                <div class="empty">Them sach vao gio hang truoc khi dat hang.</div>
+                {% endif %}
+            </div>
+        </div>
+
+        {% if recommendations %}
+        <div class="card">
+            <div class="card-title">Goi y cho ban</div>
+            <div class="card-body" style="padding-top:0;">
+                {% for rec in recommendations %}
+                <div style="padding:12px 0; border-bottom:1px solid var(--line);">
+                    <div class="fw-600">{{ rec.title }}</div>
+                    <div class="muted" style="font-size:12px;">Diem: {{ rec.score }}</div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

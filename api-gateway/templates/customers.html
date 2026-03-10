@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block title %}Khach hang | BookShop{% endblock %}
+{% block nav_customers %}active{% endblock %}
+
+{% block content %}
+
+<div class="flex mt-8" style="margin-bottom:12px; justify-content:space-between;">
+    <div>
+        <div style="font-size:18px; font-weight:600;">Khach hang</div>
+        <div class="muted" style="font-size:13px;">{{ customers|length }} khach hang</div>
+    </div>
+</div>
+
+<div class="page-grid">
+
+    <!-- Left: customer list -->
+    <div class="card">
+        <div class="card-title">Danh sach khach hang</div>
+        {% if customers %}
+        <table class="tbl">
+            <thead>
+                <tr>
+                    <th style="width:40px;">ID</th>
+                    <th>Ho ten</th>
+                    <th>Email</th>
+                    <th style="width:120px;"></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for customer in customers %}
+                <tr>
+                    <td class="muted">#{{ customer.id }}</td>
+                    <td class="fw-600">{{ customer.name }}</td>
+                    <td class="muted">{{ customer.email }}</td>
+                    <td>
+                        <a class="btn btn-outline btn-sm" href="/customer/cart/{{ customer.id }}/">Mo gio hang</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="empty">Chua co khach hang. Tao moi tu form ben phai.</div>
+        {% endif %}
+    </div>
+
+    <!-- Right: create form -->
+    <div class="card">
+        <div class="card-title">Tao khach hang moi</div>
+        <div class="card-body">
+            <form method="post" action="/customers/create/">
+                {% csrf_token %}
+                <div class="field">
+                    <label class="lbl">Ho ten</label>
+                    <input class="input" name="name" placeholder="Nguyen Van A" required>
+                </div>
+                <div class="field">
+                    <label class="lbl">Email</label>
+                    <input class="input" type="email" name="email" placeholder="example@email.com" required>
+                </div>
+                <button class="btn btn-primary btn-block" type="submit">Tao khach hang</button>
+            </form>
+        </div>
+    </div>
+
+</div>
+{% endblock %}

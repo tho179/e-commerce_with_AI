@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}BookShop{% endblock %}</title>
+    <style>
+        :root {
+            --bg: #f5f5f5;
+            --surface: #ffffff;
+            --text: #333333;
+            --muted: #757575;
+            --line: #e8e8e8;
+            --primary: #ee4d2d;
+            --primary-dark: #d73211;
+            --primary-soft: #fff3f0;
+            --price: #ee4d2d;
+            --success: #26aa99;
+            --danger: #ee4d2d;
+            --danger-soft: #fff3f0;
+            --radius: 4px;
+            --shadow: 0 1px 4px rgba(0,0,0,0.12);
+            --shadow-md: 0 2px 8px rgba(0,0,0,0.15);
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            font-size: 14px;
+            line-height: 1.5;
+            min-height: 100vh;
+        }
+
+        a { color: inherit; text-decoration: none; }
+
+        /* ── HEADER ── */
+        .header {
+            background: var(--primary);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 2px 8px rgba(238,77,45,0.3);
+        }
+
+        .header-inner {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 16px;
+            height: 56px;
+            display: flex;
+            align-items: center;
+            gap: 24px;
+        }
+
+        .brand {
+            font-size: 20px;
+            font-weight: 700;
+            color: #fff;
+            letter-spacing: -0.5px;
+            white-space: nowrap;
+        }
+
+        .brand span { opacity: 0.8; font-weight: 400; }
+
+        .nav {
+            display: flex;
+            gap: 4px;
+        }
+
+        .nav-item {
+            padding: 8px 14px;
+            border-radius: var(--radius);
+            color: rgba(255,255,255,0.9);
+            font-size: 14px;
+            white-space: nowrap;
+            transition: background 0.15s;
+        }
+
+        .nav-item:hover,
+        .nav-item.active {
+            background: rgba(255,255,255,0.2);
+            color: #fff;
+        }
+
+        .header-right {
+            margin-left: auto;
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .header-right input {
+            padding: 6px 10px;
+            border: none;
+            border-radius: var(--radius);
+            font-size: 13px;
+            width: 64px;
+            background: rgba(255,255,255,0.2);
+            color: #fff;
+            outline: none;
+        }
+
+        .header-right input::placeholder { color: rgba(255,255,255,0.7); }
+        .header-right input:focus { background: rgba(255,255,255,0.3); }
+
+        .header-right button {
+            padding: 6px 14px;
+            background: rgba(255,255,255,0.15);
+            border: 1px solid rgba(255,255,255,0.4);
+            border-radius: var(--radius);
+            color: #fff;
+            font-size: 13px;
+            cursor: pointer;
+        }
+
+        .header-right button:hover { background: rgba(255,255,255,0.25); }
+
+        /* ── SHELL ── */
+        .shell {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 12px 16px 40px;
+        }
+
+        /* ── MESSAGES ── */
+        .msg-success, .msg-error, .msg-warning {
+            padding: 10px 14px;
+            border-radius: var(--radius);
+            margin-bottom: 8px;
+            font-size: 13px;
+        }
+
+        .msg-success { background: #e8f5e9; color: #2e7d32; border: 1px solid #c8e6c9; }
+        .msg-error   { background: #fff3f0; color: #d73211; border: 1px solid #ffcdd2; }
+        .msg-warning { background: #fff8e1; color: #e65100; border: 1px solid #ffe082; }
+
+        /* ── CARD ── */
+        .card {
+            background: var(--surface);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+        }
+
+        .card-body { padding: 20px; }
+
+        .card-title {
+            font-size: 15px;
+            font-weight: 600;
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--line);
+            color: var(--text);
+        }
+
+        /* ── LAYOUTS ── */
+        .page-grid {
+            display: grid;
+            grid-template-columns: 1fr 340px;
+            gap: 12px;
+            align-items: start;
+        }
+
+        .two-col {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            align-items: start;
+        }
+
+        /* ── TABLE ── */
+        .tbl { width: 100%; border-collapse: collapse; }
+
+        .tbl th {
+            text-align: left;
+            padding: 10px 14px;
+            background: #fafafa;
+            color: var(--muted);
+            font-size: 13px;
+            font-weight: 500;
+            border-bottom: 1px solid var(--line);
+        }
+
+        .tbl td {
+            padding: 12px 14px;
+            border-bottom: 1px solid var(--line);
+            vertical-align: middle;
+            font-size: 14px;
+        }
+
+        .tbl tbody tr:last-child td { border-bottom: none; }
+        .tbl tbody tr:hover td { background: #fafafa; }
+
+        /* ── FORM ── */
+        .input, .select, .textarea {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #d9d9d9;
+            border-radius: var(--radius);
+            font-size: 14px;
+            font-family: inherit;
+            color: var(--text);
+            background: #fff;
+            outline: none;
+            transition: border-color 0.15s;
+        }
+
+        .input:focus, .select:focus, .textarea:focus { border-color: var(--primary); }
+        .textarea { min-height: 76px; resize: vertical; }
+
+        .lbl {
+            display: block;
+            font-size: 13px;
+            color: var(--muted);
+            margin-bottom: 5px;
+        }
+
+        .field { margin-bottom: 12px; }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        /* ── BUTTONS ── */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            padding: 8px 20px;
+            border-radius: var(--radius);
+            font-size: 14px;
+            font-family: inherit;
+            cursor: pointer;
+            border: none;
+            transition: opacity 0.15s, background 0.15s;
+        }
+
+        .btn-primary { background: var(--primary); color: #fff; }
+        .btn-primary:hover { background: var(--primary-dark); }
+
+        .btn-outline { background: #fff; color: var(--primary); border: 1px solid var(--primary); }
+        .btn-outline:hover { background: #fff3f0; }
+
+        .btn-ghost { background: #fff; color: var(--text); border: 1px solid var(--line); }
+        .btn-ghost:hover { background: #f5f5f5; }
+
+        .btn-danger { background: #fff3f0; color: var(--primary); border: 1px solid #ffcdd2; }
+        .btn-danger:hover { background: #ffe0db; }
+
+        .btn-sm { padding: 5px 12px; font-size: 13px; }
+        .btn-block { width: 100%; }
+
+        /* ── UTIL ── */
+        .price { color: var(--price); font-weight: 600; }
+        .tag { display: inline-block; padding: 2px 8px; border-radius: var(--radius); font-size: 12px; background: #f5f5f5; color: var(--muted); }
+        .empty { text-align: center; padding: 32px 16px; color: var(--muted); font-size: 14px; }
+        .muted { color: var(--muted); }
+        .flex { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+        .mt-8 { margin-top: 8px; }
+        .mt-12 { margin-top: 12px; }
+        .mt-16 { margin-top: 16px; }
+        .fw-600 { font-weight: 600; }
+
+        @media (max-width: 900px) {
+            .page-grid, .two-col { grid-template-columns: 1fr; }
+        }
+
+        @media (max-width: 600px) {
+            .form-row { grid-template-columns: 1fr; }
+        }
+    </style>
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+
+<header class="header">
+    <div class="header-inner">
+        <a class="brand" href="/customers/">Book<span>Shop</span></a>
+        <nav class="nav">
+            <a class="nav-item {% block nav_books %}{% endblock %}" href="/staff/books/">Quan ly Sach</a>
+            <a class="nav-item {% block nav_customers %}{% endblock %}" href="/customers/">Khach hang</a>
+            <a class="nav-item {% block nav_cart %}{% endblock %}" href="/customer/cart/{{ customer_id|default:1 }}/">Gio hang</a>
+        </nav>
+        <form class="header-right" method="get" action="/customer/cart/">
+            <input type="number" min="1" name="customer_id" value="{{ customer_id|default:1 }}" placeholder="ID KH">
+            <button type="submit">Mo gio</button>
+        </form>
+    </div>
+</header>
+
+<div class="shell">
+    {% if messages %}
+        {% for message in messages %}
+        <div class="msg-{{ message.tags|default:'success' }}">{{ message }}</div>
+        {% endfor %}
+    {% endif %}
+    {% if service_warnings %}
+        {% for w in service_warnings %}
+        <div class="msg-warning">{{ w }}</div>
+        {% endfor %}
+    {% endif %}
+
+    {% block content %}{% endblock %}
+</div>
+
+</body>
+</html>

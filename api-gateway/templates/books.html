@@ -1,0 +1,165 @@
+{% extends "base.html" %}
+{% block title %}Quan ly Sach | BookShop{% endblock %}
+{% block nav_books %}active{% endblock %}
+
+{% block content %}
+
+<!-- Page header -->
+<div class="flex mt-8" style="margin-bottom:12px; justify-content:space-between; align-items:center;">
+    <div>
+        <div style="font-size:18px; font-weight:600;">Quan ly Sach</div>
+        <div class="muted" style="font-size:13px;">{{ books|length }} dau sach &nbsp;·&nbsp; Catalog: {{ catalog_count }} ban sao</div>
+    </div>
+    <div class="flex">
+        <form method="post" action="/staff/catalog/sync/">
+            {% csrf_token %}
+            <button class="btn btn-ghost btn-sm" type="submit">Dong bo Catalog</button>
+        </form>
+    </div>
+</div>
+
+<div class="page-grid">
+
+    <!-- Left: book table -->
+    <div class="card">
+        <div class="card-title">Danh sach sach</div>
+        {% if books %}
+        <div style="overflow-x:auto;">
+            <table class="tbl">
+                <thead>
+                    <tr>
+                        <th style="width:40px;">ID</th>
+                        <th>Ten sach</th>
+                        <th>Tac gia</th>
+                        <th>Gia niem yet</th>
+                        <th>Gia hien tai</th>
+                        <th>Khuyen mai</th>
+                        <th>Ton kho</th>
+                        <th style="width:120px;"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for book in books %}
+                    <tr>
+                        <td class="muted">#{{ book.id }}</td>
+                        <td><span class="fw-600">{{ book.title }}</span></td>
+                        <td>{{ book.author }}</td>
+                        <td><span class="price">{{ book.price }} ₫</span></td>
+                        <td><span class="price">{{ book.effective_price }} ₫</span></td>
+                        <td>
+                            {% if book.active_promotion %}
+                            <span class="tag">{{ book.active_promotion.name }} - {{ book.active_promotion.discount_percent }}%</span>
+                            {% else %}
+                            <span class="muted">Khong co</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ book.stock }}</td>
+                        <td>
+                            <div class="flex">
+                                <a class="btn btn-ghost btn-sm" href="/staff/books/?edit_book={{ book.id }}">Sua</a>
+                                <form method="post" action="/staff/books/{{ book.id }}/delete/" style="display:inline;">
+                                    {% csrf_token %}
+                                    <button class="btn btn-danger btn-sm" type="submit">Xoa</button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty">Chua co sach nao. Them sach moi tu form ben phai.</div>
+        {% endif %}
+    </div>
+
+    <!-- Right: form -->
+    <div>
+        <div class="card">
+            <div class="card-title">{{ selected_book|yesno:"Sua sach,Them sach moi" }}</div>
+            <div class="card-body">
+                <form method="post" action="/staff/books/save/">
+                    {% csrf_token %}
+                    <input type="hidden" name="book_id" value="{{ selected_book.id|default:'' }}">
+
+                    <div class="field">
+                        <label class="lbl">Ten sach</label>
+                        <input class="input" name="title" value="{{ selected_book.title|default:'' }}" required>
+                    </div>
+                    <div class="field">
+                        <label class="lbl">Tac gia</label>
+                        <input class="input" name="author" value="{{ selected_book.author|default:'' }}" required>
+                    </div>
+                    <div class="form-row">
+                        <div class="field">
+                            <label class="lbl">Gia (VND)</label>
+                            <input class="input" type="number" step="1000" min="0" name="price" value="{{ selected_book.price|default:'' }}" required>
+                        </div>
+                        <div class="field">
+                            <label class="lbl">Ton kho</label>
+                            <input class="input" type="number" min="0" name="stock" value="{{ selected_book.stock|default:'' }}" required>
+                        </div>
+                    </div>
+                    <div class="flex">
+                        <button class="btn btn-primary" type="submit">{{ selected_book|yesno:"Luu thay doi,Them sach" }}</button>
+                        {% if selected_book %}<a class="btn btn-ghost" href="/staff/books/">Huy</a>{% endif %}
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        {% if selected_book %}
+        <div class="card mt-12">
+            <div class="card-title">Cap nhat gia</div>
+            <div class="card-body">
+                <form method="post" action="/staff/books/{{ selected_book.id }}/price/">
+                    {% csrf_token %}
+                    <div class="field">
+                        <label class="lbl">Gia moi (VND)</label>
+                        <input class="input" type="number" step="1000" min="0" name="price" value="{{ selected_book.price }}" required>
+                    </div>
+                    <button class="btn btn-primary" type="submit">Cap nhat gia</button>
+                </form>
+            </div>
+        </div>
+
+        <div class="card mt-12">
+            <div class="card-title">Them khuyen mai</div>
+            <div class="card-body">
+                {% if selected_book.active_promotion %}
+                <div class="msg-warning" style="margin-bottom:12px;">Khuyen mai hien tai: {{ selected_book.active_promotion.name }} - {{ selected_book.active_promotion.discount_percent }}%</div>
+                {% endif %}
+                <form method="post" action="/staff/books/{{ selected_book.id }}/promotions/add/">
+                    {% csrf_token %}
+                    <div class="field">
+                        <label class="lbl">Ten chuong trinh</label>
+                        <input class="input" name="name" placeholder="Khuyen mai cuoi tuan" required>
+                    </div>
+                    <div class="field">
+                        <label class="lbl">Giam gia (%)</label>
+                        <input class="input" type="number" min="1" max="100" name="discount_percent" value="10" required>
+                    </div>
+                    <button class="btn btn-primary" type="submit">Them khuyen mai</button>
+                </form>
+            </div>
+        </div>
+        {% endif %}
+
+        {% if catalog_books %}
+        <div class="card mt-12">
+            <div class="card-title">Catalog snapshot ({{ catalog_count }})</div>
+            <div class="card-body" style="padding-top:0;">
+                {% for book in catalog_books|slice:":5" %}
+                <div style="padding:10px 0; border-bottom:1px solid var(--line);">
+                    <div class="fw-600">{{ book.title }}</div>
+                    <div class="muted" style="font-size:13px;">{{ book.author }}</div>
+                    <div class="price" style="font-size:13px; margin-top:4px;">{{ book.price }} VND</div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+</div>
+{% endblock %}
