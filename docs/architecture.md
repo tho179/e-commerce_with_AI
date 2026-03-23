@@ -16,6 +16,7 @@ flowchart LR
     REC[recommender-ai-service]
     STAFF[staff-service]
     MAN[manager-service]
+    AUTH[auth-service]
 
     AG --> BOOK
     AG --> CART
@@ -28,6 +29,7 @@ flowchart LR
     ORD --> SHIP
     REC --> BOOK
     REC --> RATE
+    AG --> AUTH
 ```
 
 ## Service Boundaries
@@ -44,6 +46,18 @@ flowchart LR
 - `recommender-ai-service`: basic recommendation generation from reviews and catalog data.
 - `staff-service`: staff directory.
 - `manager-service`: manager directory.
+- `auth-service`: centralized JWT auth (register/login/refresh/verify) and role sync endpoint.
+
+## Gateway Modules
+
+- Authentication: login/register/logout with Django session auth.
+- Role-based UI: `Admin`, `Staff`, `Customer` via Django Groups.
+- Customer storefront: `/shop/` for multi-category product browsing (sach, quan ao, gia dung, dien tu).
+- Product detail: `/shop/<product_id>/` with rich product information and add-to-cart.
+- Favorites: `/customer/<customer_id>/favorites/` with quick add/remove wishlist flow.
+- Checkout workspace: `/customer/cart/<customer_id>/` for order + review flow.
+- Admin access control: `/admin/users/` for assigning roles to users.
+- Operations dashboard: `/staff/health/` for per-service health checks.
 
 ## Current Transaction Flow
 
@@ -61,3 +75,12 @@ flowchart LR
 - Order orchestration is synchronous REST compensation, not a message-broker Saga yet.
 - JWT auth-service, rate limiting, centralized logging, and metrics are not implemented yet.
 - RabbitMQ or Kafka integration is still pending.
+
+## Security + Observability Additions
+
+- Service-to-service protection with shared token header (`X-Service-Token`) for internal APIs.
+- Gateway request telemetry middleware with request id, latency, status counters, and recent traces.
+- Staff operations endpoints for metrics/traces: `/staff/ops/metrics/`, `/staff/ops/traces/`.
+- Auth hardening: default admin seed command and role-sync endpoint protected by `AUTH_ADMIN_TOKEN`.
+- Session hardening: gateway verifies access token and auto-refreshes via auth-service.
+- Basic brute-force protection: rate limit on auth-service login/register and gateway login endpoint.

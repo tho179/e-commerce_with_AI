@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% block title %}Suc khoe he thong | BookShop{% endblock %}
+{% block nav_health %}active{% endblock %}
+
+{% block content %}
+<div class="flex mt-8" style="margin-bottom:12px; justify-content:space-between; align-items:center;">
+    <div>
+        <div style="font-size:18px; font-weight:700;">Trang thai microservices</div>
+        <div class="muted" style="font-size:13px;">Theo doi suc khoe he thong theo tung service trong luong ban hang.</div>
+    </div>
+    <a class="btn btn-ghost btn-sm" href="/staff/books/">Quay lai quan ly sach</a>
+</div>
+
+<div class="two-col" style="margin-bottom:12px;">
+    <div class="card">
+        <div class="card-body">
+            <div class="muted">Service hoat dong tot</div>
+            <div style="font-size:30px; font-weight:800; color:var(--success);">{{ healthy_count }}</div>
+        </div>
+    </div>
+    <div class="card">
+        <div class="card-body">
+            <div class="muted">Service can xu ly</div>
+            <div style="font-size:30px; font-weight:800; color:var(--danger);">{{ degraded_count }}</div>
+        </div>
+    </div>
+</div>
+
+<div class="two-col" style="margin-bottom:12px;">
+    <div class="card">
+        <div class="card-title">Chi so Gateway</div>
+        <div class="card-body">
+            <div class="muted">Tong request</div>
+            <div style="font-size:24px; font-weight:800;">{{ gateway_metrics.request_count }}</div>
+            <div class="muted" style="margin-top:8px;">Do tre trung binh</div>
+            <div style="font-size:18px; font-weight:700;">{{ gateway_metrics.average_latency_ms }} ms</div>
+            <div class="muted" style="margin-top:8px;">Uptime</div>
+            <div style="font-size:18px; font-weight:700;">{{ gateway_metrics.uptime_seconds }}s</div>
+            <div class="flex mt-12">
+                <a class="btn btn-ghost btn-sm" href="/staff/ops/metrics/" target="_blank">Du lieu Metrics</a>
+                <a class="btn btn-ghost btn-sm" href="/staff/ops/traces/" target="_blank">Du lieu Traces</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-title">Nhat ky truy vet gan day</div>
+        <div class="card-body" style="padding-top:10px;">
+            {% if recent_traces %}
+                {% for trace in recent_traces|slice:":6" %}
+                <div style="padding:8px 0; border-bottom:1px solid var(--line);">
+                    <div class="fw-600">{{ trace.method }} {{ trace.path }}</div>
+                    <div class="muted" style="font-size:12px;">{{ trace.status }} · {{ trace.duration_ms }} ms · {{ trace.request_id }}</div>
+                </div>
+                {% endfor %}
+            {% else %}
+            <div class="muted">Chua co trace nao.</div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-title">Bang health check</div>
+    <table class="tbl">
+        <thead>
+            <tr>
+                <th>Service</th>
+                <th style="width:160px;">Trang thai</th>
+                <th>Chi tiet</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in checks %}
+            <tr>
+                <td class="fw-600">{{ item.name }}</td>
+                <td>
+                    {% if item.healthy %}
+                    <span class="tag" style="background:#e8f5e9; color:#1b5e20;">Tot</span>
+                    {% else %}
+                    <span class="tag" style="background:#fff3f0; color:#c62828;">Gian doan</span>
+                    {% endif %}
+                </td>
+                <td class="muted">{{ item.detail }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

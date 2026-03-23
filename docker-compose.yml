@@ -1,48 +1,137 @@
 services:
   customer-service:
     build: ./customer-service
+    environment:
+      SERVICE_SHARED_TOKEN: bookstore-internal-token
+    command: sh -c "python manage.py migrate --noinput; python manage.py runserver 0.0.0.0:8000"
     ports: ["8001:8000"]
 
   book-service:
     build: ./book-service
+    environment:
+      SERVICE_SHARED_TOKEN: bookstore-internal-token
+    command: sh -c "python manage.py migrate --noinput; python manage.py seed_products; python manage.py runserver 0.0.0.0:8000"
     ports: ["8002:8000"]
+
+  fashion-service:
+    build: ./fashion-service
+    environment:
+      SERVICE_SHARED_TOKEN: bookstore-internal-token
+    command: sh -c "python manage.py migrate --noinput; python manage.py seed_products; python manage.py runserver 0.0.0.0:8000"
+    ports: ["8013:8000"]
+
+  household-service:
+    build: ./household-service
+    environment:
+      SERVICE_SHARED_TOKEN: bookstore-internal-token
+    command: sh -c "python manage.py migrate --noinput; python manage.py seed_products; python manage.py runserver 0.0.0.0:8000"
+    ports: ["8014:8000"]
+
+  electronics-service:
+    build: ./electronics-service
+    environment:
+      SERVICE_SHARED_TOKEN: bookstore-internal-token
+    command: sh -c "python manage.py migrate --noinput; python manage.py seed_products; python manage.py runserver 0.0.0.0:8000"
+    ports: ["8015:8000"]
 
   cart-service:
     build: ./cart-service
+    environment:
+      SERVICE_SHARED_TOKEN: bookstore-internal-token
+    command: sh -c "python manage.py migrate --noinput; python manage.py runserver 0.0.0.0:8000"
     ports: ["8003:8000"]
 
   catalog-service:
     build: ./catalog-service
+    environment:
+      SERVICE_SHARED_TOKEN: bookstore-internal-token
+    command: sh -c "python manage.py migrate --noinput; python manage.py runserver 0.0.0.0:8000"
     ports: ["8004:8000"]
 
   order-service:
     build: ./order-service
+    depends_on:
+      - book-service
+      - fashion-service
+      - household-service
+      - electronics-service
+      - pay-service
+      - ship-service
+    environment:
+      SERVICE_SHARED_TOKEN: bookstore-internal-token
+    command: sh -c "python manage.py migrate --noinput; python manage.py runserver 0.0.0.0:8000"
     ports: ["8005:8000"]
 
   ship-service:
     build: ./ship-service
+    environment:
+      SERVICE_SHARED_TOKEN: bookstore-internal-token
+    command: sh -c "python manage.py migrate --noinput; python manage.py runserver 0.0.0.0:8000"
     ports: ["8006:8000"]
 
   pay-service:
     build: ./pay-service
+    environment:
+      SERVICE_SHARED_TOKEN: bookstore-internal-token
+    command: sh -c "python manage.py migrate --noinput; python manage.py runserver 0.0.0.0:8000"
     ports: ["8007:8000"]
 
   comment-rate-service:
     build: ./comment-rate-service
+    environment:
+      SERVICE_SHARED_TOKEN: bookstore-internal-token
+    command: sh -c "python manage.py migrate --noinput; python manage.py runserver 0.0.0.0:8000"
     ports: ["8008:8000"]
 
   recommender-ai-service:
     build: ./recommender-ai-service
+    environment:
+      SERVICE_SHARED_TOKEN: bookstore-internal-token
+    command: sh -c "python manage.py migrate --noinput; python manage.py runserver 0.0.0.0:8000"
     ports: ["8009:8000"]
 
   staff-service:
     build: ./staff-service
+    environment:
+      SERVICE_SHARED_TOKEN: bookstore-internal-token
+    command: sh -c "python manage.py migrate --noinput; python manage.py runserver 0.0.0.0:8000"
     ports: ["8010:8000"]
 
   manager-service:
     build: ./manager-service
+    environment:
+      SERVICE_SHARED_TOKEN: bookstore-internal-token
+    command: sh -c "python manage.py migrate --noinput; python manage.py runserver 0.0.0.0:8000"
     ports: ["8011:8000"]
+
+  auth-service:
+    build: ./auth-service
+    environment:
+      JWT_SECRET: bookstore-jwt-secret
+      AUTH_ADMIN_TOKEN: bookstore-auth-admin-token
+      AUTH_ADMIN_USERNAME: admin
+      AUTH_ADMIN_EMAIL: admin@bookstore.local
+      AUTH_ADMIN_PASSWORD: Admin@123456
+    command: sh -c "python manage.py migrate --noinput; python manage.py seed_admin; python manage.py runserver 0.0.0.0:8000"
+    ports: ["8012:8000"]
 
   api-gateway:
     build: ./api-gateway
+    depends_on:
+      - auth-service
+      - customer-service
+      - cart-service
+      - book-service
+      - fashion-service
+      - household-service
+      - electronics-service
+      - catalog-service
+      - order-service
+      - comment-rate-service
+      - recommender-ai-service
+    environment:
+      AUTH_SERVICE_URL: http://auth-service:8000
+      SERVICE_SHARED_TOKEN: bookstore-internal-token
+      AUTH_ADMIN_TOKEN: bookstore-auth-admin-token
+    command: sh -c "python manage.py migrate --noinput; python manage.py runserver 0.0.0.0:8000"
     ports: ["8000:8000"]

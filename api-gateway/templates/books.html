@@ -1,14 +1,12 @@
 {% extends "base.html" %}
-{% block title %}Quan ly Sach | BookShop{% endblock %}
+{% block title %}Quan ly san pham | BookShop{% endblock %}
 {% block nav_books %}active{% endblock %}
 
 {% block content %}
-
-<!-- Page header -->
 <div class="flex mt-8" style="margin-bottom:12px; justify-content:space-between; align-items:center;">
     <div>
-        <div style="font-size:18px; font-weight:600;">Quan ly Sach</div>
-        <div class="muted" style="font-size:13px;">{{ books|length }} dau sach &nbsp;·&nbsp; Catalog: {{ catalog_count }} ban sao</div>
+        <div style="font-size:18px; font-weight:600;">Quan ly san pham</div>
+        <div class="muted" style="font-size:13px;">{{ books|length }} san pham · Catalog: {{ catalog_count }} ban ghi</div>
     </div>
     <div class="flex">
         <form method="post" action="/staff/catalog/sync/">
@@ -19,21 +17,19 @@
 </div>
 
 <div class="page-grid">
-
-    <!-- Left: book table -->
     <div class="card">
-        <div class="card-title">Danh sach sach</div>
+        <div class="card-title">Danh sach san pham</div>
         {% if books %}
         <div style="overflow-x:auto;">
             <table class="tbl">
                 <thead>
                     <tr>
                         <th style="width:40px;">ID</th>
-                        <th>Ten sach</th>
-                        <th>Tac gia</th>
+                        <th>Ten san pham</th>
+                        <th>Danh muc</th>
+                        <th>Thuong hieu</th>
                         <th>Gia niem yet</th>
                         <th>Gia hien tai</th>
-                        <th>Khuyen mai</th>
                         <th>Ton kho</th>
                         <th style="width:120px;"></th>
                     </tr>
@@ -43,16 +39,10 @@
                     <tr>
                         <td class="muted">#{{ book.id }}</td>
                         <td><span class="fw-600">{{ book.title }}</span></td>
+                        <td><span class="tag">{{ book.category|default:"sach" }}</span></td>
                         <td>{{ book.author }}</td>
-                        <td><span class="price">{{ book.price }} ₫</span></td>
-                        <td><span class="price">{{ book.effective_price }} ₫</span></td>
-                        <td>
-                            {% if book.active_promotion %}
-                            <span class="tag">{{ book.active_promotion.name }} - {{ book.active_promotion.discount_percent }}%</span>
-                            {% else %}
-                            <span class="muted">Khong co</span>
-                            {% endif %}
-                        </td>
+                        <td><span class="price">{{ book.price }} VNĐ</span></td>
+                        <td><span class="price">{{ book.effective_price }} VNĐ</span></td>
                         <td>{{ book.stock }}</td>
                         <td>
                             <div class="flex">
@@ -69,30 +59,48 @@
             </table>
         </div>
         {% else %}
-        <div class="empty">Chua co sach nao. Them sach moi tu form ben phai.</div>
+        <div class="empty">Chua co san pham nao. Them san pham moi tu form ben phai.</div>
         {% endif %}
     </div>
 
-    <!-- Right: form -->
     <div>
         <div class="card">
-            <div class="card-title">{{ selected_book|yesno:"Sua sach,Them sach moi" }}</div>
+            <div class="card-title">{{ selected_book|yesno:"Sua san pham,Them san pham moi" }}</div>
             <div class="card-body">
                 <form method="post" action="/staff/books/save/">
                     {% csrf_token %}
                     <input type="hidden" name="book_id" value="{{ selected_book.id|default:'' }}">
 
                     <div class="field">
-                        <label class="lbl">Ten sach</label>
+                        <label class="lbl">Ten san pham</label>
                         <input class="input" name="title" value="{{ selected_book.title|default:'' }}" required>
-                    </div>
-                    <div class="field">
-                        <label class="lbl">Tac gia</label>
-                        <input class="input" name="author" value="{{ selected_book.author|default:'' }}" required>
                     </div>
                     <div class="form-row">
                         <div class="field">
-                            <label class="lbl">Gia (VND)</label>
+                            <label class="lbl">Thuong hieu</label>
+                            <input class="input" name="author" value="{{ selected_book.author|default:'' }}" required>
+                        </div>
+                        <div class="field">
+                            <label class="lbl">Danh muc</label>
+                            <select class="select" name="category">
+                                <option value="sach" {% if selected_book.category == "sach" %}selected{% endif %}>Sach</option>
+                                <option value="quan_ao" {% if selected_book.category == "quan_ao" %}selected{% endif %}>Quan ao</option>
+                                <option value="gia_dung" {% if selected_book.category == "gia_dung" %}selected{% endif %}>Do gia dung</option>
+                                <option value="dien_tu" {% if selected_book.category == "dien_tu" %}selected{% endif %}>Thiet bi dien tu</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="field">
+                        <label class="lbl">URL hinh anh</label>
+                        <input class="input" name="image_url" value="{{ selected_book.image_url|default:'' }}">
+                    </div>
+                    <div class="field">
+                        <label class="lbl">Mo ta</label>
+                        <textarea class="textarea" name="description">{{ selected_book.description|default:'' }}</textarea>
+                    </div>
+                    <div class="form-row">
+                        <div class="field">
+                            <label class="lbl">Gia (VNĐ)</label>
                             <input class="input" type="number" step="1000" min="0" name="price" value="{{ selected_book.price|default:'' }}" required>
                         </div>
                         <div class="field">
@@ -101,7 +109,7 @@
                         </div>
                     </div>
                     <div class="flex">
-                        <button class="btn btn-primary" type="submit">{{ selected_book|yesno:"Luu thay doi,Them sach" }}</button>
+                        <button class="btn btn-primary" type="submit">{{ selected_book|yesno:"Luu thay doi,Them san pham" }}</button>
                         {% if selected_book %}<a class="btn btn-ghost" href="/staff/books/">Huy</a>{% endif %}
                     </div>
                 </form>
@@ -115,7 +123,7 @@
                 <form method="post" action="/staff/books/{{ selected_book.id }}/price/">
                     {% csrf_token %}
                     <div class="field">
-                        <label class="lbl">Gia moi (VND)</label>
+                        <label class="lbl">Gia moi (VNĐ)</label>
                         <input class="input" type="number" step="1000" min="0" name="price" value="{{ selected_book.price }}" required>
                     </div>
                     <button class="btn btn-primary" type="submit">Cap nhat gia</button>
@@ -153,13 +161,12 @@
                 <div style="padding:10px 0; border-bottom:1px solid var(--line);">
                     <div class="fw-600">{{ book.title }}</div>
                     <div class="muted" style="font-size:13px;">{{ book.author }}</div>
-                    <div class="price" style="font-size:13px; margin-top:4px;">{{ book.price }} VND</div>
+                    <div class="price" style="font-size:13px; margin-top:4px;">{{ book.price }} VNĐ</div>
                 </div>
                 {% endfor %}
             </div>
         </div>
         {% endif %}
     </div>
-
 </div>
 {% endblock %}

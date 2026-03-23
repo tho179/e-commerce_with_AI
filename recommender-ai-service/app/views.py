@@ -1,4 +1,5 @@
 from collections import defaultdict
+import os
 
 import requests
 from rest_framework.response import Response
@@ -9,6 +10,13 @@ from .serializers import RecommendationSnapshotSerializer
 
 BOOK_SERVICE_URL = "http://book-service:8000"
 REVIEW_SERVICE_URL = "http://comment-rate-service:8000"
+SERVICE_SHARED_TOKEN = os.getenv("SERVICE_SHARED_TOKEN", "")
+
+
+def _internal_headers():
+    if not SERVICE_SHARED_TOKEN:
+        return {}
+    return {"X-Service-Token": SERVICE_SHARED_TOKEN}
 
 
 class HealthCheck(APIView):
@@ -19,8 +27,8 @@ class HealthCheck(APIView):
 class RecommendationView(APIView):
     def get(self, request, customer_id):
         try:
-            books_response = requests.get(f"{BOOK_SERVICE_URL}/books/", timeout=5)
-            reviews_response = requests.get(f"{REVIEW_SERVICE_URL}/reviews/", timeout=5)
+            books_response = requests.get(f"{BOOK_SERVICE_URL}/books/", timeout=5, headers=_internal_headers())
+            reviews_response = requests.get(f"{REVIEW_SERVICE_URL}/reviews/", timeout=5, headers=_internal_headers())
             books_response.raise_for_status()
             reviews_response.raise_for_status()
         except requests.RequestException:

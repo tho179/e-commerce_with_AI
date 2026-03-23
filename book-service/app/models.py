@@ -1,8 +1,19 @@
 from django.db import models
 
+
 class Book(models.Model):
+    CATEGORY_CHOICES = [
+        ("sach", "Sach"),
+        ("quan_ao", "Quan ao"),
+        ("gia_dung", "Do gia dung"),
+        ("dien_tu", "Thiet bi dien tu"),
+    ]
+
     title = models.CharField(max_length=255)
     author = models.CharField(max_length=255)
+    category = models.CharField(max_length=32, choices=CATEGORY_CHOICES, default="sach")
+    description = models.TextField(blank=True, default="")
+    image_url = models.URLField(blank=True, default="")
     price = models.DecimalField(max_digits=10, decimal_places=2)
     stock = models.IntegerField()
 

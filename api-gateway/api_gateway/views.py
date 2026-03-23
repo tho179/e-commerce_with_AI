@@ -1,17 +1,55 @@
 from decimal import Decimal, InvalidOperation
+from functools import wraps
+import os
 
 from django.contrib import messages
+from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth.decorators import login_required
+from django.contrib.auth.models import Group, User
+from django.http import JsonResponse
 from django.shortcuts import redirect, render
 import requests
 
+from .rate_limit import is_rate_limited
+from .telemetry import metrics_snapshot, traces_snapshot
+
 BOOK_SERVICE_URL = "http://book-service:8000"
+FASHION_SERVICE_URL = "http://fashion-service:8000"
+HOUSEHOLD_SERVICE_URL = "http://household-service:8000"
+ELECTRONICS_SERVICE_URL = "http://electronics-service:8000"
 CART_SERVICE_URL = "http://cart-service:8000"
 CUSTOMER_SERVICE_URL = "http://customer-service:8000"
 CATALOG_SERVICE_URL = "http://catalog-service:8000"
 ORDER_SERVICE_URL = "http://order-service:8000"
 COMMENT_RATE_SERVICE_URL = "http://comment-rate-service:8000"
 RECOMMENDER_AI_SERVICE_URL = "http://recommender-ai-service:8000"
+AUTH_SERVICE_URL = os.getenv("AUTH_SERVICE_URL", "http://auth-service:8000")
 REQUEST_TIMEOUT = 5
+SERVICE_SHARED_TOKEN = os.getenv("SERVICE_SHARED_TOKEN", "")
+AUTH_ADMIN_TOKEN = os.getenv("AUTH_ADMIN_TOKEN", "")
+ROLE_ADMIN = "Admin"
+ROLE_STAFF = "Staff"
+ROLE_CUSTOMER = "Customer"
+CATEGORY_LABELS = {
+    "sach": "Sach",
+    "quan_ao": "Quan ao",
+    "gia_dung": "Do gia dung",
+    "dien_tu": "Thiet bi dien tu",
+}
+
+PRODUCT_SOURCES = {
+    "sach": {"base_url": BOOK_SERVICE_URL, "list_path": "/books/", "detail_path": "/books/{id}/"},
+    "quan_ao": {"base_url": FASHION_SERVICE_URL, "list_path": "/products/", "detail_path": "/products/{id}/"},
+    "gia_dung": {"base_url": HOUSEHOLD_SERVICE_URL, "list_path": "/products/", "detail_path": "/products/{id}/"},
+    "dien_tu": {"base_url": ELECTRONICS_SERVICE_URL, "list_path": "/products/", "detail_path": "/products/{id}/"},
+}
+
+PRODUCT_ID_OFFSETS = {
+    "sach": 1000000,
+    "quan_ao": 2000000,
+    "gia_dung": 3000000,
+    "dien_tu": 4000000,
+}
 
 
 def _to_decimal(value):
@@ -28,9 +66,97 @@ def _resolve_int(raw_value, fallback=0):
         return fallback
 
 
+def _encode_product_id(category, local_id):
+    local_id = _resolve_int(local_id, 0)
+    if local_id <= 0:
+        return 0
+    return PRODUCT_ID_OFFSETS.get(category, 0) + local_id
+
+
+def _decode_product_id(global_id):
+    value = _resolve_int(global_id, 0)
+    if value <= 0:
+        return "sach", 0
+
+    if value < PRODUCT_ID_OFFSETS["sach"]:
+        return "sach", value
+
+    for category, offset in PRODUCT_ID_OFFSETS.items():
+        upper = offset + 1000000
+        if offset <= value < upper:
+            return category, value - offset
+
+    return "sach", value
+
+
+def _normalize_product(raw_product, category):
+    if not isinstance(raw_product, dict):
+        return None
+
+    local_id = _resolve_int(raw_product.get("id"), 0)
+    if local_id <= 0:
+        return None
+
+    product = dict(raw_product)
+    product["local_id"] = local_id
+    product["id"] = _encode_product_id(category, local_id)
+    product["category"] = category
+    product["category_label"] = CATEGORY_LABELS.get(category, "Khac")
+    product["title"] = raw_product.get("title") or raw_product.get("name") or f"San pham #{local_id}"
+    product["author"] = raw_product.get("author") or raw_product.get("brand") or "Dang cap nhat"
+    if "effective_price" not in product:
+        product["effective_price"] = raw_product.get("price")
+    return product
+
+
+def _fetch_products_by_category(category):
+    source = PRODUCT_SOURCES.get(category)
+    if not source:
+        return [], "Nguon du lieu san pham khong hop le."
+
+    url = f"{source['base_url']}{source['list_path']}"
+    rows, error = _get_list(url)
+    products = [item for item in [_normalize_product(row, category) for row in rows] if item]
+    return products, error
+
+
+def _fetch_all_products():
+    products = []
+    warnings = []
+    for category in ["sach", "quan_ao", "gia_dung", "dien_tu"]:
+        category_products, category_error = _fetch_products_by_category(category)
+        products.extend(category_products)
+        if category_error:
+            warnings.append(f"{CATEGORY_LABELS.get(category, category)}: {category_error}")
+    return products, warnings
+
+
+def _fetch_product_detail_by_id(product_id):
+    category, local_id = _decode_product_id(product_id)
+    source = PRODUCT_SOURCES.get(category)
+    if local_id <= 0 or not source:
+        return False, None, "San pham khong hop le."
+
+    ok, data, error = _service_request(
+        "get",
+        f"{source['base_url']}{source['detail_path'].format(id=local_id)}",
+    )
+    if not ok or not isinstance(data, dict):
+        return ok, data, error or "Khong tim thay san pham."
+
+    normalized = _normalize_product(data, category)
+    if not normalized:
+        return False, None, "Du lieu san pham khong hop le."
+    return True, normalized, None
+
+
 def _service_request(method, url, **kwargs):
+    headers = kwargs.pop("headers", {})
+    if SERVICE_SHARED_TOKEN and "X-Service-Token" not in headers:
+        headers["X-Service-Token"] = SERVICE_SHARED_TOKEN
+
     try:
-        response = requests.request(method, url, timeout=REQUEST_TIMEOUT, **kwargs)
+        response = requests.request(method, url, timeout=REQUEST_TIMEOUT, headers=headers, **kwargs)
     except requests.RequestException:
         return False, None, "Khong the ket noi service."
 
@@ -56,6 +182,10 @@ def _get_list(url, params=None):
     return [], error
 
 
+def _auth_request(method, endpoint, **kwargs):
+    return _service_request(method, f"{AUTH_SERVICE_URL}{endpoint}", **kwargs)
+
+
 def _default_customer_id(customers):
     if customers:
         return customers[0].get("id", 1)
@@ -78,8 +208,15 @@ def _ensure_cart(customer_id):
     return None, created_error or "Khong tao duoc gio hang cho khach nay."
 
 
-def _enrich_cart_items(items, books):
-    books_by_id = {book.get("id"): book for book in books}
+def _enrich_cart_items(items, products):
+    books_by_id = {}
+    for product in products:
+        product_id = product.get("id")
+        if product_id:
+            books_by_id[product_id] = product
+        # Legacy compatibility: old orders/carts can still store plain sach IDs.
+        if product.get("category") == "sach" and product.get("local_id"):
+            books_by_id[product.get("local_id")] = product
     total_quantity = 0
     total_price = Decimal("0")
 
@@ -87,7 +224,8 @@ def _enrich_cart_items(items, books):
         quantity = int(item.get("quantity", 0) or 0)
         book = books_by_id.get(item.get("book_id"), {})
         price = _to_decimal(book.get("effective_price", book.get("price", item.get("price", 0))))
-        item["book_title"] = book.get("title") or f"Sach #{item.get('book_id', '?')}"
+        item["book_title"] = book.get("title") or f"San pham #{item.get('book_id', '?')}"
+        item["book_category_label"] = book.get("category_label", "Khac")
         item["price"] = price
         item["line_total"] = price * quantity
         total_quantity += quantity
@@ -101,10 +239,310 @@ def _sync_catalog_silently():
     return ok, error
 
 
+def _favorite_ids(request):
+    raw = request.session.get("favorite_product_ids", [])
+    if not isinstance(raw, list):
+        return []
+
+    normalized = []
+    for item in raw:
+        favorite_id = _resolve_int(item, 0)
+        if favorite_id <= 0:
+            continue
+        if favorite_id < PRODUCT_ID_OFFSETS["sach"]:
+            favorite_id = _encode_product_id("sach", favorite_id)
+        normalized.append(favorite_id)
+
+    normalized = sorted(list(set(normalized)))
+    if normalized != raw:
+        request.session["favorite_product_ids"] = normalized
+    return normalized
+
+
+def _save_favorite_ids(request, ids):
+    request.session["favorite_product_ids"] = sorted(list(set(ids)))
+
+
+def _ensure_role_groups():
+    for role in [ROLE_ADMIN, ROLE_STAFF, ROLE_CUSTOMER]:
+        Group.objects.get_or_create(name=role)
+
+
+def _sync_local_user(auth_user_payload):
+    username = (auth_user_payload or {}).get("username")
+    if not username:
+        return None
+
+    email = (auth_user_payload or {}).get("email", "")
+    full_name = (auth_user_payload or {}).get("full_name", "")
+    role = (auth_user_payload or {}).get("role", ROLE_CUSTOMER)
+
+    user = User.objects.filter(username=username).first()
+    if not user:
+        user = User.objects.create_user(username=username, email=email, password=None, first_name=full_name)
+        user.set_unusable_password()
+        user.save()
+    else:
+        user.email = email
+        user.first_name = full_name
+        user.save(update_fields=["email", "first_name"])
+
+    groups = Group.objects.filter(name__in=[ROLE_ADMIN, ROLE_STAFF, ROLE_CUSTOMER])
+    user.groups.remove(*groups)
+    assigned_role = role if role in [ROLE_ADMIN, ROLE_STAFF, ROLE_CUSTOMER] else ROLE_CUSTOMER
+    user.groups.add(Group.objects.get(name=assigned_role))
+    return user
+
+
+def _get_user_role(user):
+    if not user.is_authenticated:
+        return None
+    if user.is_superuser or user.groups.filter(name=ROLE_ADMIN).exists():
+        return ROLE_ADMIN
+    if user.groups.filter(name=ROLE_STAFF).exists():
+        return ROLE_STAFF
+    if user.groups.filter(name=ROLE_CUSTOMER).exists():
+        return ROLE_CUSTOMER
+    return None
+
+
+def _role_context(user):
+    role = _get_user_role(user)
+    return {
+        "current_role": role or "Guest",
+        "is_admin": role == ROLE_ADMIN,
+        "is_staff_role": role == ROLE_STAFF,
+        "is_customer_role": role == ROLE_CUSTOMER,
+    }
+
+
+def _resolve_customer_id_for_email(email):
+    if not email:
+        return None
+    customers, _ = _get_list(f"{CUSTOMER_SERVICE_URL}/customers/")
+    for customer in customers:
+        if (customer.get("email") or "").lower() == email.lower():
+            return customer.get("id")
+    return None
+
+
+def _current_customer_id(request, requested_id=None):
+    role = _get_user_role(request.user)
+    if role in [ROLE_ADMIN, ROLE_STAFF]:
+        if requested_id is not None:
+            return requested_id
+        customers, _ = _get_list(f"{CUSTOMER_SERVICE_URL}/customers/")
+        return _resolve_int(request.GET.get("customer_id"), _default_customer_id(customers))
+
+    customer_id = _resolve_int(request.session.get("customer_id"), 0)
+    if customer_id <= 0:
+        customer_id = _resolve_int(_resolve_customer_id_for_email(request.user.email), 0)
+    if customer_id <= 0:
+        customers, _ = _get_list(f"{CUSTOMER_SERVICE_URL}/customers/")
+        customer_id = _default_customer_id(customers)
+
+    request.session["customer_id"] = customer_id
+
+    if requested_id is not None and requested_id != customer_id:
+        messages.warning(request, "Ban chi co the truy cap gio hang cua chinh minh.")
+    return customer_id
+
+
+def role_required(*allowed_roles):
+    def decorator(view_func):
+        @login_required(login_url="/auth/login/")
+        @wraps(view_func)
+        def _wrapped(request, *args, **kwargs):
+            token_ok, token_error = _ensure_session_token(request)
+            if not token_ok:
+                messages.error(request, token_error or "Phien dang nhap het han. Vui long dang nhap lai.")
+                return redirect("/auth/logout/")
+
+            role = _get_user_role(request.user)
+            if role == ROLE_ADMIN or role in allowed_roles:
+                return view_func(request, *args, **kwargs)
+            messages.error(request, "Ban khong co quyen truy cap khu vuc nay.")
+            return redirect("/dashboard/")
+
+        return _wrapped
+
+    return decorator
+
+
+def admin_required(view_func):
+    @login_required(login_url="/auth/login/")
+    @wraps(view_func)
+    def _wrapped(request, *args, **kwargs):
+        token_ok, token_error = _ensure_session_token(request)
+        if not token_ok:
+            messages.error(request, token_error or "Phien dang nhap het han. Vui long dang nhap lai.")
+            return redirect("/auth/logout/")
+
+        if _get_user_role(request.user) == ROLE_ADMIN:
+            return view_func(request, *args, **kwargs)
+        messages.error(request, "Chi admin moi co quyen truy cap khu vuc nay.")
+        return redirect("/dashboard/")
+
+    return _wrapped
+
+
+def login_view(request):
+    _ensure_role_groups()
+    if request.user.is_authenticated:
+        return redirect("/dashboard/")
+
+    if request.method == "POST":
+        client_key = request.META.get("REMOTE_ADDR", "unknown")
+        if is_rate_limited(f"gateway-login:{client_key}", limit=25, window_seconds=300):
+            messages.error(request, "Ban dang thu dang nhap qua nhieu lan. Vui long thu lai sau.")
+            return render(request, "auth_login.html", _role_context(request.user))
+
+        username = request.POST.get("username", "").strip()
+        password = request.POST.get("password", "")
+        ok, data, error = _auth_request(
+            "post",
+            "/auth/login/",
+            json={"username": username, "password": password},
+        )
+        if not ok:
+            messages.error(request, "Tai khoan hoac mat khau khong dung.")
+        else:
+            user = _sync_local_user((data or {}).get("user", {}))
+            if not user:
+                messages.error(request, "Dang nhap that bai do du lieu nguoi dung khong hop le.")
+                context = _role_context(request.user)
+                return render(request, "auth_login.html", context)
+
+            login(request, user)
+            request.session["access_token"] = (data or {}).get("access_token")
+            request.session["refresh_token"] = (data or {}).get("refresh_token")
+            customer_id = _resolve_customer_id_for_email(user.email)
+            if customer_id:
+                request.session["customer_id"] = customer_id
+            return redirect("/dashboard/")
+
+    context = _role_context(request.user)
+    return render(request, "auth_login.html", context)
+
+
+def register_view(request):
+    _ensure_role_groups()
+    if request.user.is_authenticated:
+        return redirect("/dashboard/")
+
+    if request.method == "POST":
+        full_name = request.POST.get("full_name", "").strip()
+        username = request.POST.get("username", "").strip()
+        email = request.POST.get("email", "").strip().lower()
+        password = request.POST.get("password", "")
+        confirm_password = request.POST.get("confirm_password", "")
+
+        if not username or not email or not password:
+            messages.error(request, "Vui long nhap day du thong tin bat buoc.")
+            return render(request, "auth_register.html", _role_context(request.user))
+        if password != confirm_password:
+            messages.error(request, "Mat khau xac nhan khong khop.")
+            return render(request, "auth_register.html", _role_context(request.user))
+        auth_ok, auth_data, auth_error = _auth_request(
+            "post",
+            "/auth/register/",
+            json={
+                "username": username,
+                "email": email,
+                "password": password,
+                "full_name": full_name,
+                "role": ROLE_CUSTOMER,
+            },
+        )
+        if not auth_ok:
+            messages.error(request, auth_error or "Dang ky that bai.")
+            return render(request, "auth_register.html", _role_context(request.user))
+
+        user = _sync_local_user((auth_data or {}).get("user", {}))
+        if not user:
+            messages.error(request, "Dang ky that bai do du lieu nguoi dung khong hop le.")
+            return render(request, "auth_register.html", _role_context(request.user))
+
+        ok, data, error = _service_request(
+            "post",
+            f"{CUSTOMER_SERVICE_URL}/customers/",
+            json={"name": full_name or username, "email": email},
+        )
+
+        login(request, user)
+        request.session["access_token"] = (auth_data or {}).get("access_token")
+        request.session["refresh_token"] = (auth_data or {}).get("refresh_token")
+        if ok and isinstance(data, dict) and data.get("id"):
+            request.session["customer_id"] = data.get("id")
+        elif error:
+            messages.warning(request, f"Da tao tai khoan, nhung dong bo customer that bai: {error}")
+
+        messages.success(request, "Dang ky thanh cong. Chao mung ban den voi BookShop.")
+        return redirect("/dashboard/")
+
+    return render(request, "auth_register.html", _role_context(request.user))
+
+
+@login_required(login_url="/auth/login/")
+def logout_view(request):
+    logout(request)
+    request.session.pop("access_token", None)
+    request.session.pop("refresh_token", None)
+    return redirect("/auth/login/")
+
+
+def _ensure_session_token(request):
+    access_token = request.session.get("access_token")
+    refresh_token = request.session.get("refresh_token")
+
+    if not access_token:
+        return False, "Thieu access token trong phien lam viec."
+
+    verify_ok, _, _ = _auth_request("post", "/auth/verify/", json={"token": access_token})
+    if verify_ok:
+        return True, None
+
+    if not refresh_token:
+        return False, "Token het han va khong co refresh token."
+
+    refresh_ok, refresh_data, refresh_error = _auth_request(
+        "post",
+        "/auth/refresh/",
+        json={"refresh_token": refresh_token},
+    )
+    if not refresh_ok or not isinstance(refresh_data, dict):
+        return False, refresh_error or "Khong refresh duoc token."
+
+    new_access = refresh_data.get("access_token")
+    new_refresh = refresh_data.get("refresh_token")
+    if not new_access or not new_refresh:
+        return False, "Du lieu token tra ve khong hop le."
+
+    request.session["access_token"] = new_access
+    request.session["refresh_token"] = new_refresh
+    _sync_local_user((refresh_data or {}).get("user", {}))
+    return True, None
+
+
+@login_required(login_url="/auth/login/")
+def dashboard(request):
+    role = _get_user_role(request.user)
+    if role in [ROLE_ADMIN, ROLE_STAFF]:
+        return redirect("/staff/books/")
+    if role == ROLE_CUSTOMER:
+        return redirect("/shop/")
+
+    messages.error(request, "Tai khoan chua duoc cap quyen. Vui long lien he quan tri vien.")
+    return redirect("/auth/logout/")
+
+
 def home(request):
-    return redirect("/customers/")
+    if request.user.is_authenticated:
+        return redirect("/dashboard/")
+    return redirect("/auth/login/")
 
 
+@role_required(ROLE_STAFF)
 def book_list(request):
     books, book_error = _get_list(f"{BOOK_SERVICE_URL}/books/")
     catalog_books, catalog_error = _get_list(f"{CATALOG_SERVICE_URL}/catalog/books/")
@@ -123,9 +561,11 @@ def book_list(request):
         "selected_book": selected_book,
         "service_warnings": [warning for warning in [book_error, catalog_error, customer_error] if warning],
     }
+    context.update(_role_context(request.user))
     return render(request, "books.html", context)
 
 
+@role_required(ROLE_STAFF)
 def save_book(request):
     if request.method != "POST":
         return redirect("/staff/books/")
@@ -133,6 +573,9 @@ def save_book(request):
     payload = {
         "title": request.POST.get("title", "").strip(),
         "author": request.POST.get("author", "").strip(),
+        "category": request.POST.get("category", "sach").strip() or "sach",
+        "description": request.POST.get("description", "").strip(),
+        "image_url": request.POST.get("image_url", "").strip(),
         "price": request.POST.get("price", "0").strip(),
         "stock": request.POST.get("stock", "0").strip(),
     }
@@ -154,6 +597,7 @@ def save_book(request):
     return redirect("/staff/books/")
 
 
+@role_required(ROLE_STAFF)
 def update_book_price(request, book_id):
     if request.method != "POST":
         return redirect(f"/staff/books/?edit_book={book_id}")
@@ -168,6 +612,7 @@ def update_book_price(request, book_id):
     return redirect(f"/staff/books/?edit_book={book_id}")
 
 
+@role_required(ROLE_STAFF)
 def create_promotion(request, book_id):
     if request.method != "POST":
         return redirect(f"/staff/books/?edit_book={book_id}")
@@ -193,6 +638,7 @@ def create_promotion(request, book_id):
     return redirect(f"/staff/books/?edit_book={book_id}")
 
 
+@role_required(ROLE_STAFF)
 def delete_book(request, book_id):
     if request.method == "POST":
         ok, _, error = _service_request("delete", f"{BOOK_SERVICE_URL}/books/{book_id}/")
@@ -203,6 +649,7 @@ def delete_book(request, book_id):
     return redirect("/staff/books/")
 
 
+@role_required(ROLE_STAFF)
 def sync_catalog(request):
     if request.method == "POST":
         ok, data, error = _service_request("post", f"{CATALOG_SERVICE_URL}/catalog/sync/")
@@ -213,6 +660,7 @@ def sync_catalog(request):
     return redirect("/staff/books/")
 
 
+@role_required(ROLE_STAFF)
 def customer_list(request):
     customers, customer_error = _get_list(f"{CUSTOMER_SERVICE_URL}/customers/")
     context = {
@@ -220,9 +668,11 @@ def customer_list(request):
         "customer_id": _resolve_int(request.GET.get("customer_id"), _default_customer_id(customers)),
         "service_warnings": [warning for warning in [customer_error] if warning],
     }
+    context.update(_role_context(request.user))
     return render(request, "customers.html", context)
 
 
+@role_required(ROLE_STAFF)
 def create_customer(request):
     if request.method != "POST":
         return redirect("/customers/")
@@ -239,15 +689,200 @@ def create_customer(request):
     return redirect("/customers/")
 
 
+@role_required(ROLE_CUSTOMER)
 def cart_lookup(request):
-    customers, _ = _get_list(f"{CUSTOMER_SERVICE_URL}/customers/")
-    customer_id = _resolve_int(request.GET.get("customer_id"), _default_customer_id(customers))
+    customer_id = _current_customer_id(request)
     return redirect(f"/customer/cart/{customer_id}/")
+
+
+def _collect_service_health():
+    checks = [
+        ("book-service", f"{BOOK_SERVICE_URL}/health/"),
+        ("fashion-service", f"{FASHION_SERVICE_URL}/health/"),
+        ("household-service", f"{HOUSEHOLD_SERVICE_URL}/health/"),
+        ("electronics-service", f"{ELECTRONICS_SERVICE_URL}/health/"),
+        ("cart-service", f"{CART_SERVICE_URL}/health/"),
+        ("customer-service", f"{CUSTOMER_SERVICE_URL}/health/"),
+        ("catalog-service", f"{CATALOG_SERVICE_URL}/health/"),
+        ("order-service", f"{ORDER_SERVICE_URL}/health/"),
+        ("comment-rate-service", f"{COMMENT_RATE_SERVICE_URL}/health/"),
+        ("recommender-ai-service", f"{RECOMMENDER_AI_SERVICE_URL}/health/"),
+        ("auth-service", f"{AUTH_SERVICE_URL}/health/"),
+    ]
+    results = [{"name": "api-gateway", "healthy": True, "detail": "ready"}]
+
+    for name, url in checks:
+        ok, data, error = _service_request("get", url)
+        detail = "ok"
+        if isinstance(data, dict):
+            detail = data.get("status") or data.get("message") or detail
+        if error:
+            detail = error
+        results.append({"name": name, "healthy": ok, "detail": detail})
+
+    return results
+
+
+def _serialize_users_with_roles():
+    role_names = [ROLE_ADMIN, ROLE_STAFF, ROLE_CUSTOMER]
+    users = []
+    for user in User.objects.all().order_by("id"):
+        role = _get_user_role(user) or "Unassigned"
+        users.append(
+            {
+                "id": user.id,
+                "username": user.username,
+                "email": user.email,
+                "is_superuser": user.is_superuser,
+                "role": role,
+                "joined_at": user.date_joined,
+            }
+        )
+
+    return users, role_names
+
+
+@role_required(ROLE_CUSTOMER)
+def shop(request):
+    customer_id = _current_customer_id(request)
+    search_query = (request.GET.get("q") or "").strip().lower()
+    selected_category = (request.GET.get("category") or "").strip().lower()
+
+    books, product_warnings = _fetch_all_products()
+
+    if search_query:
+        books = [
+            book
+            for book in books
+            if search_query in (book.get("title") or "").lower()
+            or search_query in (book.get("author") or "").lower()
+        ]
+    if selected_category and selected_category in CATEGORY_LABELS:
+        books = [book for book in books if (book.get("category") or "sach") == selected_category]
+
+    recommendation_ok, recommendation_data, recommendation_error = _service_request(
+        "get",
+        f"{RECOMMENDER_AI_SERVICE_URL}/recommendations/{customer_id}/",
+    )
+    recommended_ids = set()
+    recommendations = []
+    if recommendation_ok and isinstance(recommendation_data, dict):
+        recommendations = recommendation_data.get("recommendations", [])
+        for item in recommendations:
+            raw_book_id = item.get("book_id")
+            if raw_book_id:
+                recommended_ids.add(_encode_product_id("sach", raw_book_id))
+                recommended_ids.add(raw_book_id)
+
+    cart_ok, cart_data, cart_error = _service_request("get", f"{CART_SERVICE_URL}/carts/{customer_id}/")
+    cart_payload = cart_data if cart_ok and isinstance(cart_data, dict) else {"items": []}
+    cart_items = cart_payload.get("items", [])
+    total_quantity, total_price = _enrich_cart_items(cart_items, books)
+    favorite_ids = _favorite_ids(request)
+    for book in books:
+        book["category_label"] = CATEGORY_LABELS.get(book.get("category"), "Khac")
+
+    context = {
+        "customer_id": customer_id,
+        "books": books,
+        "category_choices": CATEGORY_LABELS,
+        "selected_category": selected_category,
+        "recommendations": recommendations,
+        "recommended_ids": recommended_ids,
+        "search_query": request.GET.get("q", "").strip(),
+        "favorite_ids": favorite_ids,
+        "favorite_count": len(favorite_ids),
+        "cart_id": cart_payload.get("cart_id"),
+        "item_count": len(cart_items),
+        "total_quantity": total_quantity,
+        "total_price": total_price,
+        "service_warnings": [
+            warning
+            for warning in [*product_warnings, recommendation_error, cart_error]
+            if warning
+        ],
+    }
+    context.update(_role_context(request.user))
+    return render(request, "shop.html", context)
+
+
+@role_required(ROLE_CUSTOMER)
+def product_detail(request, product_id):
+    customer_id = _current_customer_id(request)
+    ok, product, error = _fetch_product_detail_by_id(product_id)
+    if not ok or not isinstance(product, dict):
+        messages.error(request, error or "Khong tim thay san pham.")
+        return redirect("/shop/")
+
+    books, _ = _fetch_all_products()
+
+    cart_ok, cart_data, cart_error = _service_request("get", f"{CART_SERVICE_URL}/carts/{customer_id}/")
+    cart_payload = cart_data if cart_ok and isinstance(cart_data, dict) else {"items": []}
+    items = cart_payload.get("items", [])
+    total_quantity, total_price = _enrich_cart_items(items, books)
+    favorite_ids = _favorite_ids(request)
+
+    context = {
+        "customer_id": customer_id,
+        "product": product,
+        "category_label": CATEGORY_LABELS.get(product.get("category"), "Khac"),
+        "is_favorite": product.get("id") in favorite_ids,
+        "favorite_count": len(favorite_ids),
+        "cart_id": cart_payload.get("cart_id"),
+        "item_count": len(items),
+        "total_quantity": total_quantity,
+        "total_price": total_price,
+        "service_warnings": [warning for warning in [cart_error] if warning],
+    }
+    context.update(_role_context(request.user))
+    return render(request, "product_detail.html", context)
+
+
+@role_required(ROLE_CUSTOMER)
+def toggle_favorite(request, product_id):
+    customer_id = _current_customer_id(request)
+    if request.method != "POST":
+        return redirect("/shop/")
+
+    normalized_product_id = product_id
+    if normalized_product_id < PRODUCT_ID_OFFSETS["sach"]:
+        normalized_product_id = _encode_product_id("sach", normalized_product_id)
+
+    favorite_ids = _favorite_ids(request)
+    if normalized_product_id in favorite_ids:
+        favorite_ids = [item for item in favorite_ids if item != normalized_product_id]
+        messages.success(request, "Da bo khoi muc yeu thich.")
+    else:
+        favorite_ids.append(normalized_product_id)
+        messages.success(request, "Da them vao muc yeu thich.")
+
+    _save_favorite_ids(request, favorite_ids)
+    next_url = request.POST.get("next") or f"/customer/{customer_id}/favorites/"
+    return redirect(next_url)
+
+
+@role_required(ROLE_CUSTOMER)
+def favorite_products(request, customer_id):
+    resolved_customer_id = _current_customer_id(request, customer_id)
+    books, product_warnings = _fetch_all_products()
+    favorite_ids = _favorite_ids(request)
+    favorites = [book for book in books if book.get("id") in favorite_ids]
+    for product in favorites:
+        product["category_label"] = CATEGORY_LABELS.get(product.get("category"), "Khac")
+
+    context = {
+        "customer_id": resolved_customer_id,
+        "favorites": favorites,
+        "favorite_count": len(favorites),
+        "service_warnings": [warning for warning in product_warnings if warning],
+    }
+    context.update(_role_context(request.user))
+    return render(request, "favorites.html", context)
 
 
 def _build_workspace(customer_id):
     customers, customer_error = _get_list(f"{CUSTOMER_SERVICE_URL}/customers/")
-    books, book_error = _get_list(f"{BOOK_SERVICE_URL}/books/")
+    books, product_warnings = _fetch_all_products()
     orders_ok, orders_data, order_error = _service_request("get", f"{ORDER_SERVICE_URL}/orders/")
     purchased_ok, purchased_data, purchased_error = _service_request(
         "get",
@@ -278,7 +913,16 @@ def _build_workspace(customer_id):
     reviews = reviews_data if reviews_ok and isinstance(reviews_data, list) else []
     recommendations = recommendation_data.get("recommendations", []) if recommendation_ok and isinstance(recommendation_data, dict) else []
     purchased_ids = purchased_data.get("book_ids", []) if purchased_ok and isinstance(purchased_data, dict) else []
-    reviewable_books = [book for book in books if book.get("id") in purchased_ids]
+    purchased_set = {_resolve_int(item, 0) for item in purchased_ids}
+    reviewable_books = [
+        book
+        for book in books
+        if book.get("id") in purchased_set
+        or (
+            book.get("category") == "sach"
+            and _resolve_int(book.get("local_id"), 0) in purchased_set
+        )
+    ]
 
     return {
         "customer_id": customer_id,
@@ -296,24 +940,111 @@ def _build_workspace(customer_id):
         "recommendations": recommendations,
         "order_count": len(orders),
         "review_count": len(reviews),
-        "service_warnings": [warning for warning in [customer_error, book_error, order_error, purchased_error, review_error, recommendation_error, cart_error] if warning],
+        "service_warnings": [
+            warning
+            for warning in [customer_error, *product_warnings, order_error, purchased_error, review_error, recommendation_error, cart_error]
+            if warning
+        ],
     }
 
 
+@role_required(ROLE_CUSTOMER)
 def view_cart(request, customer_id):
-    return render(request, "cart.html", _build_workspace(customer_id))
+    resolved_customer_id = _current_customer_id(request, customer_id)
+    context = _build_workspace(resolved_customer_id)
+    context.update(_role_context(request.user))
+    return render(request, "cart.html", context)
 
 
+@admin_required
+def admin_users(request):
+    _ensure_role_groups()
+
+    if request.method == "POST":
+        user_id = _resolve_int(request.POST.get("user_id"), 0)
+        role = request.POST.get("role", "").strip()
+        if role not in [ROLE_ADMIN, ROLE_STAFF, ROLE_CUSTOMER]:
+            messages.error(request, "Role khong hop le.")
+            return redirect("/admin/users/")
+
+        target = User.objects.filter(id=user_id).first()
+        if not target:
+            messages.error(request, "Khong tim thay nguoi dung.")
+            return redirect("/admin/users/")
+
+        if target.is_superuser:
+            messages.warning(request, "Tai khoan superuser mac dinh la Admin.")
+            return redirect("/admin/users/")
+
+        sync_ok, _, sync_error = _auth_request(
+            "post",
+            "/auth/users/role/",
+            json={"username": target.username, "role": role},
+            headers={"X-Admin-Token": AUTH_ADMIN_TOKEN},
+        )
+        if not sync_ok:
+            messages.error(request, f"Khong dong bo duoc role voi auth-service: {sync_error}")
+            return redirect("/admin/users/")
+
+        groups = Group.objects.filter(name__in=[ROLE_ADMIN, ROLE_STAFF, ROLE_CUSTOMER])
+        target.groups.remove(*groups)
+        target.groups.add(Group.objects.get(name=role))
+        messages.success(request, f"Da cap role {role} cho {target.username}.")
+        return redirect("/admin/users/")
+
+    users, role_names = _serialize_users_with_roles()
+    context = {
+        "users": users,
+        "role_names": role_names,
+    }
+    context.update(_role_context(request.user))
+    return render(request, "admin_users.html", context)
+
+
+@role_required(ROLE_STAFF)
+def service_health(request):
+    checks = _collect_service_health()
+    total = len(checks)
+    healthy = len([item for item in checks if item.get("healthy")])
+
+    context = {
+        "checks": checks,
+        "healthy_count": healthy,
+        "degraded_count": total - healthy,
+        "gateway_metrics": metrics_snapshot(),
+        "recent_traces": traces_snapshot(12),
+    }
+    context.update(_role_context(request.user))
+    return render(request, "service_health.html", context)
+
+
+@role_required(ROLE_STAFF)
+def ops_metrics(request):
+    return JsonResponse(metrics_snapshot())
+
+
+@role_required(ROLE_STAFF)
+def ops_traces(request):
+    return JsonResponse({"traces": traces_snapshot(50)})
+
+
+@role_required(ROLE_CUSTOMER)
 def add_cart_item(request, customer_id):
+    customer_id = _current_customer_id(request, customer_id)
     if request.method != "POST":
         return redirect(f"/customer/cart/{customer_id}/")
+
+    cart_url = f"/customer/cart/{customer_id}/"
+    next_url = (request.POST.get("next") or request.META.get("HTTP_REFERER") or "").strip()
+    if not next_url.startswith("/"):
+        next_url = cart_url
 
     cart_id = _resolve_int(request.POST.get("cart_id"), 0)
     if cart_id <= 0:
         cart_id, cart_error = _ensure_cart(customer_id)
         if not cart_id:
             messages.error(request, cart_error)
-            return redirect(f"/customer/cart/{customer_id}/")
+            return redirect(next_url)
 
     payload = {
         "cart": cart_id,
@@ -322,20 +1053,25 @@ def add_cart_item(request, customer_id):
     }
     if payload["book_id"] <= 0:
         messages.error(request, "Vui long chon sach hop le.")
-        return redirect(f"/customer/cart/{customer_id}/")
+        return redirect(next_url)
     if payload["quantity"] <= 0:
         messages.error(request, "So luong phai lon hon 0.")
-        return redirect(f"/customer/cart/{customer_id}/")
+        return redirect(next_url)
 
     ok, _, error = _service_request("post", f"{CART_SERVICE_URL}/cart-items/", json=payload)
     if ok:
-        messages.success(request, "Da them sach vao gio hang.")
+        if next_url != cart_url:
+            messages.success(request, "Da them san pham vao gio hang.", extra_tags="cart-modal")
+        else:
+            messages.success(request, "Da them san pham vao gio hang.")
     else:
         messages.error(request, error)
-    return redirect(f"/customer/cart/{customer_id}/")
+    return redirect(next_url)
 
 
+@role_required(ROLE_CUSTOMER)
 def update_cart_item(request, customer_id, item_id):
+    customer_id = _current_customer_id(request, customer_id)
     if request.method != "POST":
         return redirect(f"/customer/cart/{customer_id}/")
 
@@ -351,7 +1087,9 @@ def update_cart_item(request, customer_id, item_id):
     return redirect(f"/customer/cart/{customer_id}/")
 
 
+@role_required(ROLE_CUSTOMER)
 def delete_cart_item(request, customer_id, item_id):
+    customer_id = _current_customer_id(request, customer_id)
     if request.method == "POST":
         ok, _, error = _service_request("delete", f"{CART_SERVICE_URL}/cart-items/{item_id}/")
         if ok:
@@ -361,7 +1099,9 @@ def delete_cart_item(request, customer_id, item_id):
     return redirect(f"/customer/cart/{customer_id}/")
 
 
+@role_required(ROLE_CUSTOMER)
 def create_order(request, customer_id):
+    customer_id = _current_customer_id(request, customer_id)
     if request.method != "POST":
         return redirect(f"/customer/cart/{customer_id}/")
 
@@ -384,7 +1124,9 @@ def create_order(request, customer_id):
     return redirect(f"/customer/cart/{customer_id}/")
 
 
+@role_required(ROLE_CUSTOMER)
 def create_review(request, customer_id):
+    customer_id = _current_customer_id(request, customer_id)
     if request.method != "POST":
         return redirect(f"/customer/cart/{customer_id}/")
 
@@ -395,7 +1137,7 @@ def create_review(request, customer_id):
         "comment": request.POST.get("comment", "").strip(),
     }
     if payload["book_id"] <= 0:
-        messages.error(request, "Vui long chon sach de danh gia.")
+        messages.error(request, "Vui long chon san pham de danh gia.")
         return redirect(f"/customer/cart/{customer_id}/")
     if payload["rating"] < 1 or payload["rating"] > 5:
         messages.error(request, "Diem danh gia phai tu 1 den 5.")

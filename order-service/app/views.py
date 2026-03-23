@@ -1,4 +1,5 @@
 from decimal import Decimal
+import os
 
 import requests
 from rest_framework.response import Response
@@ -9,8 +10,58 @@ from .serializers import OrderSerializer
 
 CART_SERVICE_URL = "http://cart-service:8000"
 BOOK_SERVICE_URL = "http://book-service:8000"
+FASHION_SERVICE_URL = "http://fashion-service:8000"
+HOUSEHOLD_SERVICE_URL = "http://household-service:8000"
+ELECTRONICS_SERVICE_URL = "http://electronics-service:8000"
 PAY_SERVICE_URL = "http://pay-service:8000"
 SHIP_SERVICE_URL = "http://ship-service:8000"
+SERVICE_SHARED_TOKEN = os.getenv("SERVICE_SHARED_TOKEN", "")
+
+PRODUCT_ID_OFFSETS = {
+    "sach": 1000000,
+    "quan_ao": 2000000,
+    "gia_dung": 3000000,
+    "dien_tu": 4000000,
+}
+
+PRODUCT_SOURCES = {
+    "sach": {"base_url": BOOK_SERVICE_URL, "list_path": "/books/"},
+    "quan_ao": {"base_url": FASHION_SERVICE_URL, "list_path": "/products/"},
+    "gia_dung": {"base_url": HOUSEHOLD_SERVICE_URL, "list_path": "/products/"},
+    "dien_tu": {"base_url": ELECTRONICS_SERVICE_URL, "list_path": "/products/"},
+}
+
+
+def _internal_headers():
+    if not SERVICE_SHARED_TOKEN:
+        return {}
+    return {"X-Service-Token": SERVICE_SHARED_TOKEN}
+
+
+def _encode_product_id(category, local_id):
+    return PRODUCT_ID_OFFSETS.get(category, 0) + int(local_id)
+
+
+def _fetch_product_price_map():
+    products = {}
+    headers = _internal_headers()
+    for category, source in PRODUCT_SOURCES.items():
+        response = requests.get(
+            f"{source['base_url']}{source['list_path']}",
+            timeout=5,
+            headers=headers,
+        )
+        response.raise_for_status()
+        rows = response.json() if isinstance(response.json(), list) else []
+        for row in rows:
+            local_id = int(row.get("id", 0))
+            if local_id <= 0:
+                continue
+            global_id = _encode_product_id(category, local_id)
+            products[global_id] = Decimal(str(row.get("effective_price", row.get("price", 0))))
+            if category == "sach":
+                products[local_id] = products[global_id]
+    return products
 
 
 class HealthCheck(APIView):
@@ -30,10 +81,13 @@ class OrderListCreate(APIView):
         shipping_address = request.data.get("shipping_address", "Unknown")
 
         try:
-            cart_response = requests.get(f"{CART_SERVICE_URL}/carts/{customer_id}/", timeout=5)
-            books_response = requests.get(f"{BOOK_SERVICE_URL}/books/", timeout=5)
+            cart_response = requests.get(
+                f"{CART_SERVICE_URL}/carts/{customer_id}/",
+                timeout=5,
+                headers=_internal_headers(),
+            )
             cart_response.raise_for_status()
-            books_response.raise_for_status()
+            products_by_id = _fetch_product_price_map()
         except requests.RequestException:
             return Response({"error": "Dependency unavailable"}, status=503)
 
@@ -42,7 +96,6 @@ class OrderListCreate(APIView):
         if not items:
             return Response({"error": "Cart is empty"}, status=400)
 
-        books_by_id = {book["id"]: book for book in books_response.json()}
         order = Order.objects.create(
             customer_id=customer_id,
             cart_id=cart_data.get("cart_id", 0),
@@ -54,12 +107,12 @@ class OrderListCreate(APIView):
 
         total_amount = Decimal("0")
         for item in items:
-            book = books_by_id.get(item["book_id"])
-            if not book:
+            product_id = item.get("book_id")
+            price = products_by_id.get(product_id)
+            if price is None:
                 order.status = "failed"
                 order.save(update_fields=["status"])
-                return Response({"error": f"Book {item['book_id']} not found"}, status=400)
-            price = Decimal(str(book.get("effective_price", book["price"])))
+                return Response({"error": f"Product {item['book_id']} not found"}, status=400)
             OrderItem.objects.create(
                 order=order,
                 book_id=item["book_id"],
@@ -83,6 +136,7 @@ class OrderListCreate(APIView):
                     "method": payment_method,
                 },
                 timeout=5,
+                headers=_internal_headers(),
             )
             payment_response.raise_for_status()
 
@@ -95,15 +149,24 @@ class OrderListCreate(APIView):
                     "method": shipping_method,
                 },
                 timeout=5,
+                headers=_internal_headers(),
             )
             shipment_response.raise_for_status()
         except requests.RequestException:
             if payment_response is not None and payment_response.ok:
                 payment_id = payment_response.json().get("id")
-                requests.post(f"{PAY_SERVICE_URL}/payments/{payment_id}/cancel/", timeout=5)
+                requests.post(
+                    f"{PAY_SERVICE_URL}/payments/{payment_id}/cancel/",
+                    timeout=5,
+                    headers=_internal_headers(),
+                )
             if shipment_response is not None and shipment_response.ok:
                 shipment_id = shipment_response.json().get("id")
-                requests.post(f"{SHIP_SERVICE_URL}/shipments/{shipment_id}/cancel/", timeout=5)
+                requests.post(
+                    f"{SHIP_SERVICE_URL}/shipments/{shipment_id}/cancel/",
+                    timeout=5,
+                    headers=_internal_headers(),
+                )
             order.status = "failed"
             order.save(update_fields=["status"])
             return Response({"error": "Order orchestration failed"}, status=502)

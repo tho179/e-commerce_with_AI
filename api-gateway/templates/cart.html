@@ -14,7 +14,12 @@
             {{ customer.email|default:"" }} - {{ item_count }} san pham - <span class="price">{{ total_price }} VND</span>
         </div>
     </div>
-    <a class="btn btn-ghost btn-sm" href="/customers/">Danh sach khach hang</a>
+    <div class="flex">
+        <a class="btn btn-ghost btn-sm" href="/shop/">Tiep tuc mua sam</a>
+        {% if is_admin or is_staff_role %}
+        <a class="btn btn-ghost btn-sm" href="/customers/">Danh sach khach hang</a>
+        {% endif %}
+    </div>
 </div>
 
 <div class="page-grid">
@@ -31,11 +36,11 @@
                     <input type="hidden" name="cart_id" value="{{ cart_id|default:'' }}">
                     <div class="form-row" style="align-items:flex-end;">
                         <div class="field" style="margin-bottom:0;">
-                            <label class="lbl">Chon sach</label>
+                            <label class="lbl">Chon san pham</label>
                             <select class="select" name="book_id" required>
-                                <option value="">-- Chon sach --</option>
+                                <option value="">-- Chon san pham --</option>
                                 {% for book in books %}
-                                <option value="{{ book.id }}">{{ book.title }} - {{ book.effective_price }} VND</option>
+                                <option value="{{ book.id }}">{{ book.title }} - {{ book.effective_price }} VNĐ</option>
                                 {% endfor %}
                             </select>
                         </div>
@@ -56,10 +61,10 @@
                 <div style="display:flex; align-items:center; gap:12px; padding:14px 20px; border-top:1px solid var(--line);">
                     <div style="flex:1; min-width:0;">
                         <div class="fw-600" style="margin-bottom:2px;">{{ item.book_title }}</div>
-                        <div class="muted" style="font-size:13px;">{{ item.price }} VND / cuon</div>
+                        <div class="muted" style="font-size:13px;">{{ item.price }} VNĐ</div>
                     </div>
                     <div style="text-align:right; margin-right:12px;">
-                        <div class="price fw-600">{{ item.line_total }} VND</div>
+                        <div class="price fw-600">{{ item.line_total }} VNĐ</div>
                         <div class="muted" style="font-size:12px;">x{{ item.quantity }}</div>
                     </div>
                     <form method="post" action="/customer/cart/{{ customer_id }}/items/{{ item.id }}/update/" style="display:flex; gap:6px; align-items:center;">
@@ -75,11 +80,11 @@
                 {% endfor %}
                 <div style="padding:12px 20px; text-align:right; border-top:1px solid var(--line); background:#fafafa; border-radius:0 0 4px 4px;">
                     <span class="muted" style="font-size:13px;">Tong cong: </span>
-                    <span class="price fw-600" style="font-size:16px;">{{ total_price }} VND</span>
+                    <span class="price fw-600" style="font-size:16px;">{{ total_price }} VNĐ</span>
                 </div>
             </div>
             {% else %}
-            <div class="empty" style="border-top:1px solid var(--line);">Gio hang trong. Them sach de bat dau.</div>
+            <div class="empty" style="border-top:1px solid var(--line);">Gio hang trong. Them san pham de bat dau.</div>
             {% endif %}
         </div>
 
@@ -96,7 +101,7 @@
                     <span class="tag">{{ order.status }}</span>
                 </div>
                 <div class="muted" style="font-size:13px;">
-                    {{ order.payment_method|upper }} - {{ order.shipping_method }} - <span class="price">{{ order.total_amount }} VND</span>
+                    {{ order.payment_method|upper }} - {{ order.shipping_method }} - <span class="price">{{ order.total_amount }} VNĐ</span>
                 </div>
             </div>
             {% endfor %}
@@ -115,9 +120,9 @@
                     {% csrf_token %}
                     <div class="form-row">
                         <div class="field">
-                            <label class="lbl">Sach</label>
+                            <label class="lbl">San pham</label>
                             <select class="select" name="book_id" required {% if not reviewable_books %}disabled{% endif %}>
-                                <option value="">-- Chon sach --</option>
+                                <option value="">-- Chon san pham --</option>
                                 {% for book in reviewable_books %}
                                 <option value="{{ book.id }}">{{ book.title }}</option>
                                 {% endfor %}
@@ -139,7 +144,7 @@
                         <textarea class="textarea" name="comment" placeholder="Viet nhan xet..."></textarea>
                     </div>
                     {% if not reviewable_books %}
-                    <div class="msg-warning" style="margin-bottom:12px;">Chi co the danh gia nhung sach da mua trong don hang da xac nhan.</div>
+                    <div class="msg-warning" style="margin-bottom:12px;">Chi co the danh gia nhung san pham da mua trong don hang da xac nhan.</div>
                     {% endif %}
                     <button class="btn btn-primary" type="submit">Gui danh gia</button>
                 </form>
@@ -149,7 +154,7 @@
                     {% for review in reviews %}
                     <div style="padding:10px 0; border-bottom:1px solid var(--line);">
                         <div class="flex">
-                            <span class="fw-600">Sach #{{ review.book_id }}</span>
+                            <span class="fw-600">San pham #{{ review.book_id }}</span>
                             <span class="tag">{{ review.rating }}/5</span>
                         </div>
                         {% if review.comment %}<div class="muted" style="font-size:13px; margin-top:4px;">{{ review.comment }}</div>{% endif %}
@@ -188,12 +193,12 @@
                     </div>
                     <div style="padding:12px; background:#fff3f0; border-radius:4px; margin-bottom:12px;">
                         <div class="muted" style="font-size:13px; margin-bottom:2px;">Tong thanh toan</div>
-                        <div class="price fw-600" style="font-size:18px;">{{ total_price }} VND</div>
+                        <div class="price fw-600" style="font-size:18px;">{{ total_price }} VNĐ</div>
                     </div>
                     <button class="btn btn-primary btn-block" type="submit">Dat hang ngay</button>
                 </form>
                 {% else %}
-                <div class="empty">Them sach vao gio hang truoc khi dat hang.</div>
+                <div class="empty">Them san pham vao gio hang truoc khi dat hang.</div>
                 {% endif %}
             </div>
         </div>

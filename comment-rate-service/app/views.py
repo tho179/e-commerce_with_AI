@@ -1,4 +1,5 @@
 import requests
+import os
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -6,6 +7,13 @@ from .models import Review
 from .serializers import ReviewSerializer
 
 ORDER_SERVICE_URL = "http://order-service:8000"
+SERVICE_SHARED_TOKEN = os.getenv("SERVICE_SHARED_TOKEN", "")
+
+
+def _internal_headers():
+    if not SERVICE_SHARED_TOKEN:
+        return {}
+    return {"X-Service-Token": SERVICE_SHARED_TOKEN}
 
 
 class HealthCheck(APIView):
@@ -32,6 +40,7 @@ class ReviewListCreate(APIView):
             purchase_response = requests.get(
                 f"{ORDER_SERVICE_URL}/customers/{customer_id}/purchased-books/{book_id}/",
                 timeout=5,
+                headers=_internal_headers(),
             )
             purchase_response.raise_for_status()
         except requests.RequestException:

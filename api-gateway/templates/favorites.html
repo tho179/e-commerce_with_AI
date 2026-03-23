@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}San pham yeu thich | BookShop{% endblock %}
+{% block nav_favorites %}active{% endblock %}
+
+{% block content %}
+<div class="flex mt-8" style="margin-bottom:12px; justify-content:space-between; align-items:center;">
+    <div>
+        <div style="font-size:18px; font-weight:700;">San pham yeu thich</div>
+        <div class="muted" style="font-size:13px;">{{ favorite_count }} san pham trong danh sach cua ban.</div>
+    </div>
+    <a class="btn btn-ghost btn-sm" href="/shop/">Quay lai mua sam</a>
+</div>
+
+<div class="card">
+    <div class="card-title">Danh sach yeu thich</div>
+    {% if favorites %}
+    <div style="padding:16px; display:grid; grid-template-columns:repeat(auto-fill,minmax(250px,1fr)); gap:12px;">
+        {% for product in favorites %}
+        <div style="border:1px solid var(--line); border-radius:10px; padding:12px; background:#fff; display:flex; flex-direction:column; gap:10px;">
+            <div style="height:140px; border-radius:8px; overflow:hidden; background:#f8f1eb; display:flex; align-items:center; justify-content:center;">
+                {% if product.image_url %}
+                <img src="{{ product.image_url }}" alt="{{ product.title }}" style="width:100%; height:100%; object-fit:cover;">
+                {% else %}
+                <span class="muted">Khong co anh</span>
+                {% endif %}
+            </div>
+            <div class="tag" style="width:max-content;">{{ product.category_label }}</div>
+            <div class="fw-600">{{ product.title }}</div>
+            <div class="muted" style="font-size:13px;">{{ product.author }}</div>
+            <div class="price" style="font-size:18px;">{{ product.effective_price|default:product.price }} VNĐ</div>
+
+            <div class="flex" style="justify-content:space-between; margin-top:auto;">
+                <a class="btn btn-ghost btn-sm" href="/shop/{{ product.id }}/">Xem chi tiet</a>
+                <form method="post" action="/customer/favorites/{{ product.id }}/toggle/">
+                    {% csrf_token %}
+                    <input type="hidden" name="next" value="/customer/{{ customer_id }}/favorites/">
+                    <button class="btn btn-danger btn-sm" type="submit">Bo yeu thich</button>
+                </form>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty">Ban chua co san pham yeu thich nao.</div>
+    {% endif %}
+</div>
+{% endblock %}

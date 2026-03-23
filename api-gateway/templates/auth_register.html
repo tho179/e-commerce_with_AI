@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}Dang ky | BookShop{% endblock %}
+
+{% block content %}
+<div style="max-width:520px; margin:28px auto;">
+    <div class="card">
+        <div class="card-title">Tao tai khoan khach hang</div>
+        <div class="card-body">
+            <form method="post" action="/auth/register/">
+                {% csrf_token %}
+                <div class="field">
+                    <label class="lbl">Ho va ten</label>
+                    <input class="input" name="full_name" placeholder="Nguyen Van A">
+                </div>
+                <div class="form-row">
+                    <div class="field">
+                        <label class="lbl">Ten dang nhap</label>
+                        <input class="input" name="username" required>
+                    </div>
+                    <div class="field">
+                        <label class="lbl">Email</label>
+                        <input class="input" type="email" name="email" required>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="field">
+                        <label class="lbl">Mat khau</label>
+                        <input class="input" type="password" name="password" required>
+                    </div>
+                    <div class="field">
+                        <label class="lbl">Xac nhan mat khau</label>
+                        <input class="input" type="password" name="confirm_password" required>
+                    </div>
+                </div>
+                <button class="btn btn-primary btn-block" type="submit">Dang ky tai khoan</button>
+            </form>
+            <div class="muted" style="margin-top:12px; font-size:13px;">
+                Da co tai khoan? <a href="/auth/login/" style="color:var(--primary);">Dang nhap</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

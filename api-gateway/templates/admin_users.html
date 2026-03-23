@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block title %}Phan quyen | BookShop{% endblock %}
+{% block nav_admin_users %}active{% endblock %}
+
+{% block content %}
+<div class="flex mt-8" style="margin-bottom:12px; justify-content:space-between; align-items:center;">
+    <div>
+        <div style="font-size:18px; font-weight:700;">Quan ly phan quyen nguoi dung</div>
+        <div class="muted" style="font-size:13px;">Cap role Admin / Staff / Customer cho tai khoan he thong.</div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-title">Danh sach tai khoan</div>
+    {% if users %}
+    <div style="overflow-x:auto;">
+        <table class="tbl">
+            <thead>
+                <tr>
+                    <th style="width:55px;">ID</th>
+                    <th>Username</th>
+                    <th>Email</th>
+                    <th>Role hien tai</th>
+                    <th style="width:280px;">Cap nhat role</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in users %}
+                <tr>
+                    <td class="muted">#{{ item.id }}</td>
+                    <td class="fw-600">{{ item.username }}</td>
+                    <td class="muted">{{ item.email|default:"-" }}</td>
+                    <td>
+                        {% if item.is_superuser %}
+                        <span class="tag" style="background:#e3f2fd; color:#114f78;">Admin (Superuser)</span>
+                        {% else %}
+                        <span class="tag">{{ item.role }}</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if item.is_superuser %}
+                        <span class="muted">Mac dinh he thong</span>
+                        {% else %}
+                        <form method="post" action="/admin/users/" class="flex">
+                            {% csrf_token %}
+                            <input type="hidden" name="user_id" value="{{ item.id }}">
+                            <select class="select" name="role" style="max-width:140px;">
+                                {% for role_name in role_names %}
+                                <option value="{{ role_name }}" {% if item.role == role_name %}selected{% endif %}>{{ role_name }}</option>
+                                {% endfor %}
+                            </select>
+                            <button class="btn btn-primary btn-sm" type="submit">Luu</button>
+                        </form>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="empty">Chua co tai khoan nao trong he thong.</div>
+    {% endif %}
+</div>
+{% endblock %}

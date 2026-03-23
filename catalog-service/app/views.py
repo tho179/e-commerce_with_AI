@@ -1,12 +1,20 @@
 import requests
 from rest_framework.response import Response
 from rest_framework.views import APIView
+import os
 
 from .models import CatalogBook
 from .serializers import CatalogBookSerializer
 from django.db import models
 
 BOOK_SERVICE_URL = "http://book-service:8000"
+SERVICE_SHARED_TOKEN = os.getenv("SERVICE_SHARED_TOKEN", "")
+
+
+def _internal_headers():
+    if not SERVICE_SHARED_TOKEN:
+        return {}
+    return {"X-Service-Token": SERVICE_SHARED_TOKEN}
 
 
 class HealthCheck(APIView):
@@ -23,7 +31,7 @@ class CatalogBookList(APIView):
 class CatalogSync(APIView):
     def post(self, request):
         try:
-            response = requests.get(f"{BOOK_SERVICE_URL}/books/", timeout=5)
+            response = requests.get(f"{BOOK_SERVICE_URL}/books/", timeout=5, headers=_internal_headers())
             response.raise_for_status()
         except requests.RequestException:
             return Response({"error": "Book service unavailable"}, status=503)
@@ -35,6 +43,9 @@ class CatalogSync(APIView):
                 defaults={
                     "title": book["title"],
                     "author": book["author"],
+                    "category": book.get("category", "sach"),
+                    "description": book.get("description", ""),
+                    "image_url": book.get("image_url", ""),
                     "price": book["price"],
                     "stock": book["stock"],
                 },

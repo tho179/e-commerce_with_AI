@@ -2,9 +2,6 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from .models import Cart, CartItem
 from .serializers import CartSerializer, CartItemSerializer
-import requests
-
-BOOK_SERVICE_URL = "http://book-service:8000" # URL nội bộ trong Docker [cite: 266]
 
 
 class HealthCheck(APIView):
@@ -28,16 +25,9 @@ class AddCartItem(APIView):
     def post(self, request):
         book_id = request.data.get("book_id")
         cart_id = request.data.get("cart")
-        
-        # Gọi sang Book Service để kiểm tra sách có tồn tại không [cite: 276, 300]
-        try:
-            r = requests.get(f"{BOOK_SERVICE_URL}/books/")
-            books = r.json()
-            
-            if not any(b["id"] == book_id for b in books): # [cite: 278]
-                return Response({"error": "Book not found"}, status=404) # [cite: 279]
-        except requests.exceptions.ConnectionError:
-            return Response({"error": "Book service is down"}, status=503)
+
+        if not cart_id or not book_id:
+            return Response({"error": "cart and book_id are required"}, status=400)
 
         cart_item = CartItem.objects.filter(cart_id=cart_id, book_id=book_id).first()
         serializer = CartItemSerializer(cart_item, data=request.data) if cart_item else CartItemSerializer(data=request.data)

@@ -24,11 +24,20 @@ class BookListCreate(APIView):
 
 
 class BookDetail(APIView):
+    def get(self, request, book_id):
+        try:
+            book = Book.objects.get(id=book_id)
+        except Book.DoesNotExist:
+            return Response({"error": "San pham khong ton tai"}, status=404)
+
+        serializer = BookSerializer(book)
+        return Response(serializer.data)
+
     def put(self, request, book_id):
         try:
             book = Book.objects.get(id=book_id)
         except Book.DoesNotExist:
-            return Response({"error": "Book not found"}, status=404)
+            return Response({"error": "San pham khong ton tai"}, status=404)
 
         serializer = BookSerializer(book, data=request.data, partial=True)
         if serializer.is_valid():
@@ -40,7 +49,7 @@ class BookDetail(APIView):
         try:
             book = Book.objects.get(id=book_id)
         except Book.DoesNotExist:
-            return Response({"error": "Book not found"}, status=404)
+            return Response({"error": "San pham khong ton tai"}, status=404)
 
         book.delete()
         return Response(status=204)
@@ -51,7 +60,7 @@ class BookPriceUpdate(APIView):
         try:
             book = Book.objects.get(id=book_id)
         except Book.DoesNotExist:
-            return Response({"error": "Book not found"}, status=404)
+            return Response({"error": "San pham khong ton tai"}, status=404)
 
         price = request.data.get("price")
         serializer = BookSerializer(book, data={"price": price}, partial=True)
@@ -70,7 +79,7 @@ class PromotionListCreate(APIView):
     def post(self, request):
         book_id = request.data.get("book")
         if not Book.objects.filter(id=book_id).exists():
-            return Response({"error": "Book not found"}, status=404)
+            return Response({"error": "San pham khong ton tai"}, status=404)
 
         Promotion.objects.filter(book_id=book_id, is_active=True).update(is_active=False)
         serializer = PromotionSerializer(data=request.data)
