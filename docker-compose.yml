@@ -1,4 +1,11 @@
 services:
+  rabbitmq:
+    image: rabbitmq:3.13-management
+    environment:
+      RABBITMQ_DEFAULT_USER: bookstore
+      RABBITMQ_DEFAULT_PASS: bookstore123
+    ports: ["5672:5672", "15672:15672"]
+
   customer-service:
     build: ./customer-service
     environment:
@@ -34,6 +41,27 @@ services:
     command: sh -c "python manage.py migrate --noinput; python manage.py seed_products; python manage.py runserver 0.0.0.0:8000"
     ports: ["8015:8000"]
 
+  beauty-service:
+    build: ./beauty-service
+    environment:
+      SERVICE_SHARED_TOKEN: bookstore-internal-token
+    command: sh -c "python manage.py migrate --noinput; python manage.py seed_products; python manage.py runserver 0.0.0.0:8000"
+    ports: ["8017:8000"]
+
+  grocery-service:
+    build: ./grocery-service
+    environment:
+      SERVICE_SHARED_TOKEN: bookstore-internal-token
+    command: sh -c "python manage.py migrate --noinput; python manage.py seed_products; python manage.py runserver 0.0.0.0:8000"
+    ports: ["8018:8000"]
+
+  sports-service:
+    build: ./sports-service
+    environment:
+      SERVICE_SHARED_TOKEN: bookstore-internal-token
+    command: sh -c "python manage.py migrate --noinput; python manage.py seed_products; python manage.py runserver 0.0.0.0:8000"
+    ports: ["8019:8000"]
+
   cart-service:
     build: ./cart-service
     environment:
@@ -56,7 +84,6 @@ services:
       - household-service
       - electronics-service
       - pay-service
-      - ship-service
     environment:
       SERVICE_SHARED_TOKEN: bookstore-internal-token
     command: sh -c "python manage.py migrate --noinput; python manage.py runserver 0.0.0.0:8000"
@@ -78,17 +105,49 @@ services:
 
   comment-rate-service:
     build: ./comment-rate-service
+    depends_on:
+      - rabbitmq
     environment:
       SERVICE_SHARED_TOKEN: bookstore-internal-token
+      RABBITMQ_URL: amqp://bookstore:bookstore123@rabbitmq:5672/
     command: sh -c "python manage.py migrate --noinput; python manage.py runserver 0.0.0.0:8000"
     ports: ["8008:8000"]
 
   recommender-ai-service:
     build: ./recommender-ai-service
+    depends_on:
+      - comment-rate-service
+      - rabbitmq
+    environment:
+      SERVICE_SHARED_TOKEN: bookstore-internal-token
+      RABBITMQ_URL: amqp://bookstore:bookstore123@rabbitmq:5672/
+    command: sh -c "python manage.py migrate --noinput; python manage.py runserver 0.0.0.0:8000"
+    ports: ["8009:8000"]
+
+  recommender-ai-worker:
+    build: ./recommender-ai-service
+    depends_on:
+      - comment-rate-service
+      - rabbitmq
+    environment:
+      SERVICE_SHARED_TOKEN: bookstore-internal-token
+      RABBITMQ_URL: amqp://bookstore:bookstore123@rabbitmq:5672/
+    command: sh -c "python manage.py migrate --noinput; python manage.py consume_review_events"
+
+  search-ai-service:
+    build: ./search-ai-service
+    depends_on:
+      - book-service
+      - fashion-service
+      - household-service
+      - electronics-service
+      - beauty-service
+      - grocery-service
+      - sports-service
     environment:
       SERVICE_SHARED_TOKEN: bookstore-internal-token
     command: sh -c "python manage.py migrate --noinput; python manage.py runserver 0.0.0.0:8000"
-    ports: ["8009:8000"]
+    ports: ["8020:8000"]
 
   staff-service:
     build: ./staff-service
@@ -125,13 +184,17 @@ services:
       - fashion-service
       - household-service
       - electronics-service
+      - beauty-service
+      - grocery-service
+      - sports-service
       - catalog-service
       - order-service
       - comment-rate-service
       - recommender-ai-service
+      - search-ai-service
     environment:
       AUTH_SERVICE_URL: http://auth-service:8000
       SERVICE_SHARED_TOKEN: bookstore-internal-token
       AUTH_ADMIN_TOKEN: bookstore-auth-admin-token
     command: sh -c "python manage.py migrate --noinput; python manage.py runserver 0.0.0.0:8000"
-    ports: ["8000:8000"]
+    ports: ["8016:8000"]

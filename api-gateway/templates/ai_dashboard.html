@@ -1,0 +1,152 @@
+{% extends "base.html" %}
+{% block title %}AI Dashboard | BookShop{% endblock %}
+{% block nav_ai %}active{% endblock %}
+
+{% block content %}
+<div class="flex mt-8" style="margin-bottom:12px; justify-content:space-between; align-items:center;">
+    <div>
+        <div style="font-size:22px; font-weight:800;">AI Operations Dashboard</div>
+        <div class="muted" style="font-size:13px;">Theo doi sentiment trend, drift mo hinh va canh bao chat luong theo SKU.</div>
+    </div>
+    <form method="post" action="/staff/ai/dashboard/">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="retrain">
+        <button class="btn btn-primary" type="submit">Trigger Retrain</button>
+    </form>
+</div>
+
+<div class="two-col" style="margin-bottom:12px; grid-template-columns:repeat(4, minmax(0, 1fr));">
+    <div class="card">
+        <div class="card-body">
+            <div class="muted">Tong review</div>
+            <div style="font-size:28px; font-weight:800;">{{ review_insights.total_reviews|default:0 }}</div>
+        </div>
+    </div>
+    <div class="card">
+        <div class="card-body">
+            <div class="muted">Average rating</div>
+            <div style="font-size:28px; font-weight:800;">{{ review_insights.average_rating|default:0 }}</div>
+        </div>
+    </div>
+    <div class="card">
+        <div class="card-body">
+            <div class="muted">Average sentiment</div>
+            <div style="font-size:28px; font-weight:800;">{{ review_insights.average_sentiment_score|default:0 }}</div>
+        </div>
+    </div>
+    <div class="card">
+        <div class="card-body">
+            <div class="muted">Divergence</div>
+            <div style="font-size:28px; font-weight:800;">{{ drift_status.divergence|default:0 }}</div>
+        </div>
+    </div>
+</div>
+
+<div class="page-grid" style="grid-template-columns: 1.25fr 1fr;">
+    <div>
+        <div class="card" style="margin-bottom:12px;">
+            <div class="card-title">Trend sentiment theo tuan</div>
+            <div class="card-body" style="padding-top:8px;">
+                {% if weekly_trend %}
+                    {% for item in weekly_trend %}
+                    <div style="padding:10px 0; border-bottom:1px solid var(--line);">
+                        <div class="flex" style="justify-content:space-between; margin-bottom:6px;">
+                            <span class="fw-600">{{ item.week }}</span>
+                            <span class="muted">{{ item.count }} reviews</span>
+                        </div>
+                        <div style="height:8px; border-radius:999px; background:#f0e2d7; overflow:hidden;">
+                            <div style="height:8px; width:{% widthratio item.average_sentiment 1 100 %}%; background:linear-gradient(90deg,#0e8f6f,#57c7a2);"></div>
+                        </div>
+                        <div class="muted" style="font-size:12px; margin-top:6px;">Sentiment {{ item.average_sentiment }} | Rating {{ item.average_rating }}</div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                <div class="empty">Chua co du lieu trend.</div>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-title">Canh bao chat luong theo SKU</div>
+            {% if quality_alerts %}
+            <table class="tbl">
+                <thead>
+                    <tr>
+                        <th>San pham</th>
+                        <th>Danh muc</th>
+                        <th>Review</th>
+                        <th>Avg rating</th>
+                        <th>Negative ratio</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in quality_alerts %}
+                    <tr>
+                        <td class="fw-600">{{ row.title }}</td>
+                        <td><span class="tag">{{ row.category_label }}</span></td>
+                        <td>{{ row.review_count }}</td>
+                        <td>{{ row.average_rating }}</td>
+                        <td>
+                            <span class="tag" style="background:#fff3f0; color:#ba2f14;">{{ row.negative_ratio }}</span>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <div class="empty">Chua co canh bao chat luong noi bat.</div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div>
+        <div class="card" style="margin-bottom:12px;">
+            <div class="card-title">Model status</div>
+            <div class="card-body">
+                <div class="muted">Model kind</div>
+                <div style="font-size:18px; font-weight:700;">{{ model_status.model_kind|default:"n/a" }}</div>
+                <div class="muted" style="margin-top:10px;">Trained on reviews</div>
+                <div style="font-size:18px; font-weight:700;">{{ model_status.trained_on_reviews|default:0 }}</div>
+                <div class="muted" style="margin-top:10px;">Current reviews</div>
+                <div style="font-size:18px; font-weight:700;">{{ model_status.current_review_count|default:0 }}</div>
+            </div>
+        </div>
+
+        <div class="card" style="margin-bottom:12px;">
+            <div class="card-title">Drift monitor</div>
+            <div class="card-body">
+                <div class="muted">Source</div>
+                <div class="fw-600">{{ drift_status.source|default:"n/a" }}</div>
+                <div class="muted" style="margin-top:10px;">Average rating</div>
+                <div class="fw-600">{{ drift_status.average_rating|default:0 }}</div>
+                <div class="muted" style="margin-top:10px;">Average sentiment</div>
+                <div class="fw-600">{{ drift_status.average_sentiment|default:0 }}</div>
+                <div class="muted" style="margin-top:10px;">Negative ratio</div>
+                <div class="fw-600">{{ drift_status.negative_ratio|default:0 }}</div>
+                <div class="muted" style="margin-top:10px;">Need retrain</div>
+                {% if drift_status.needs_retrain %}
+                <span class="tag" style="background:#fff3f0; color:#ba2f14;">Yes</span>
+                {% else %}
+                <span class="tag" style="background:#e8f5e9; color:#1b5e20;">No</span>
+                {% endif %}
+                {% if drift_status.note %}
+                <div class="muted" style="margin-top:10px; font-size:12px;">{{ drift_status.note }}</div>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-title">Recommended actions</div>
+            <div class="card-body" style="padding-top:0;">
+                {% if review_insights.recommended_actions %}
+                    {% for action in review_insights.recommended_actions %}
+                    <div class="tag" style="display:block; white-space:normal; margin-top:12px;">{{ action }}</div>
+                    {% endfor %}
+                {% else %}
+                <div class="empty">Chua co de xuat hanh dong.</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

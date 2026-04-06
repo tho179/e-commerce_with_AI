@@ -17,7 +17,18 @@
 - `GET /payments/`, `POST /payments/reserve/`, `POST /payments/<payment_id>/cancel/`
 - `GET /shipments/`, `POST /shipments/reserve/`, `POST /shipments/<shipment_id>/cancel/`
 - `GET /reviews/`, `POST /reviews/`
+- `GET /reviews/insights/?book_id=<id>`
+- `GET /reviews/model-status/`
 - `GET /recommendations/<customer_id>/`
+- `GET /ai/drift/`
+- `POST /ai/retrain/`
+- `GET /search/semantic/?q=<query>&top_k=<n>`
+
+## New Category Services
+
+- `beauty-service`: `GET /products/`, `POST /products/`
+- `grocery-service`: `GET /products/`, `POST /products/`
+- `sports-service`: `GET /products/`, `POST /products/`
 
 ## Auth Service (JWT)
 
@@ -61,6 +72,9 @@ Auth service operational notes:
 - `quan_ao`
 - `gia_dung`
 - `dien_tu`
+- `lam_dep`
+- `tieu_dung`
+- `the_thao`
 
 ## Example Payloads
 
@@ -102,5 +116,72 @@ Auth service operational notes:
   "book_id": 1,
   "rating": 5,
   "comment": "Rat hay"
+}
+```
+
+### Trigger Retrain
+
+`POST /ai/retrain/`
+
+```json
+{
+  "source": "negative-spike",
+  "note": "Detected strong negative review spike from event stream."
+}
+```
+
+Both `source` and `note` are optional. If omitted, retrain uses defaults for manual trigger.
+
+### AI-Enriched Review Response
+
+```json
+{
+  "id": 12,
+  "customer_id": 1,
+  "book_id": 1000001,
+  "rating": 4,
+  "comment": "Giao hang cham nhung chat luong tot",
+  "sentiment_label": "neutral",
+  "sentiment_score": 0.58,
+  "aspect_tags": ["delivery", "product_quality"],
+  "advice": "Mo ticket voi doi logistics, kiem tra SLA va cap nhat ETA chu dong cho khach.",
+  "ai_metadata": {
+    "analyzer": {
+      "model_kind": "deep-neural-net",
+      "trained_on_reviews": 120,
+      "minimum_required_reviews": 8
+    },
+    "aspect_hits": 2
+  },
+  "created_at": "2026-04-06T09:10:30.021Z"
+}
+```
+
+### Review Insights Response
+
+```json
+{
+  "book_id": 1000001,
+  "scope": "book",
+  "total_reviews": 42,
+  "average_rating": 4.19,
+  "average_sentiment_score": 0.754,
+  "sentiment_distribution": {
+    "positive": 30,
+    "neutral": 9,
+    "negative": 3
+  },
+  "top_aspects": [
+    {"aspect": "delivery", "count": 14},
+    {"aspect": "product_quality", "count": 10}
+  ],
+  "recommended_actions": [
+    "Day manh cross-sell/upsell voi nhom san pham co sentiment cao."
+  ],
+  "status": {
+    "model_kind": "deep-neural-net",
+    "trained_on_reviews": 120,
+    "minimum_required_reviews": 8
+  }
 }
 ```

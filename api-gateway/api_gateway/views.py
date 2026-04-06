@@ -1,3 +1,4 @@
+from datetime import datetime
 from decimal import Decimal, InvalidOperation
 from functools import wraps
 import os
@@ -17,12 +18,16 @@ BOOK_SERVICE_URL = "http://book-service:8000"
 FASHION_SERVICE_URL = "http://fashion-service:8000"
 HOUSEHOLD_SERVICE_URL = "http://household-service:8000"
 ELECTRONICS_SERVICE_URL = "http://electronics-service:8000"
+BEAUTY_SERVICE_URL = "http://beauty-service:8000"
+GROCERY_SERVICE_URL = "http://grocery-service:8000"
+SPORTS_SERVICE_URL = "http://sports-service:8000"
 CART_SERVICE_URL = "http://cart-service:8000"
 CUSTOMER_SERVICE_URL = "http://customer-service:8000"
 CATALOG_SERVICE_URL = "http://catalog-service:8000"
 ORDER_SERVICE_URL = "http://order-service:8000"
 COMMENT_RATE_SERVICE_URL = "http://comment-rate-service:8000"
 RECOMMENDER_AI_SERVICE_URL = "http://recommender-ai-service:8000"
+SEARCH_AI_SERVICE_URL = "http://search-ai-service:8000"
 AUTH_SERVICE_URL = os.getenv("AUTH_SERVICE_URL", "http://auth-service:8000")
 REQUEST_TIMEOUT = 5
 SERVICE_SHARED_TOKEN = os.getenv("SERVICE_SHARED_TOKEN", "")
@@ -35,6 +40,9 @@ CATEGORY_LABELS = {
     "quan_ao": "Quan ao",
     "gia_dung": "Do gia dung",
     "dien_tu": "Thiet bi dien tu",
+    "lam_dep": "Lam dep",
+    "tieu_dung": "Tieu dung",
+    "the_thao": "The thao",
 }
 
 PRODUCT_SOURCES = {
@@ -42,6 +50,9 @@ PRODUCT_SOURCES = {
     "quan_ao": {"base_url": FASHION_SERVICE_URL, "list_path": "/products/", "detail_path": "/products/{id}/"},
     "gia_dung": {"base_url": HOUSEHOLD_SERVICE_URL, "list_path": "/products/", "detail_path": "/products/{id}/"},
     "dien_tu": {"base_url": ELECTRONICS_SERVICE_URL, "list_path": "/products/", "detail_path": "/products/{id}/"},
+    "lam_dep": {"base_url": BEAUTY_SERVICE_URL, "list_path": "/products/", "detail_path": "/products/{id}/"},
+    "tieu_dung": {"base_url": GROCERY_SERVICE_URL, "list_path": "/products/", "detail_path": "/products/{id}/"},
+    "the_thao": {"base_url": SPORTS_SERVICE_URL, "list_path": "/products/", "detail_path": "/products/{id}/"},
 }
 
 PRODUCT_ID_OFFSETS = {
@@ -49,6 +60,9 @@ PRODUCT_ID_OFFSETS = {
     "quan_ao": 2000000,
     "gia_dung": 3000000,
     "dien_tu": 4000000,
+    "lam_dep": 5000000,
+    "tieu_dung": 6000000,
+    "the_thao": 7000000,
 }
 
 
@@ -123,7 +137,7 @@ def _fetch_products_by_category(category):
 def _fetch_all_products():
     products = []
     warnings = []
-    for category in ["sach", "quan_ao", "gia_dung", "dien_tu"]:
+    for category in ["sach", "quan_ao", "gia_dung", "dien_tu", "lam_dep", "tieu_dung", "the_thao"]:
         category_products, category_error = _fetch_products_by_category(category)
         products.extend(category_products)
         if category_error:
@@ -180,6 +194,119 @@ def _get_list(url, params=None):
     if ok and isinstance(data, list):
         return data, None
     return [], error
+
+
+def _review_insights(book_id=None):
+    params = {"book_id": book_id} if book_id is not None else None
+    ok, data, error = _service_request(
+        "get",
+        f"{COMMENT_RATE_SERVICE_URL}/reviews/insights/",
+        params=params,
+    )
+    if ok and isinstance(data, dict):
+        return data, None
+    return {}, error
+
+
+def _search_semantic(query, top_k=48):
+    ok, data, error = _service_request(
+        "get",
+        f"{SEARCH_AI_SERVICE_URL}/search/semantic/",
+        params={"q": query, "top_k": top_k},
+    )
+    if ok and isinstance(data, dict):
+        return data, None
+    return {}, error
+
+
+def _parse_iso_datetime(raw_value):
+    value = (raw_value or "").strip()
+    if not value:
+        return None
+
+    if value.endswith("Z"):
+        value = value[:-1] + "+00:00"
+
+    try:
+        return datetime.fromisoformat(value)
+    except ValueError:
+        return None
+
+
+def _weekly_sentiment_trend(reviews, max_weeks=10):
+    buckets = {}
+    for review in reviews:
+        timestamp = _parse_iso_datetime(review.get("created_at"))
+        if timestamp is None:
+            continue
+
+        year, week, _ = timestamp.isocalendar()
+        key = f"{year}-W{int(week):02d}"
+        if key not in buckets:
+            buckets[key] = {"week": key, "count": 0, "sentiment_total": 0.0, "rating_total": 0.0}
+
+        buckets[key]["count"] += 1
+        buckets[key]["sentiment_total"] += float(review.get("sentiment_score", 0.5) or 0.5)
+        buckets[key]["rating_total"] += float(review.get("rating", 0) or 0)
+
+    trend = []
+    for key in sorted(buckets.keys()):
+        row = buckets[key]
+        count = row["count"]
+        trend.append(
+            {
+                "week": row["week"],
+                "count": count,
+                "average_sentiment": round(row["sentiment_total"] / max(1, count), 4),
+                "average_rating": round(row["rating_total"] / max(1, count), 3),
+            }
+        )
+
+    return trend[-max_weeks:]
+
+
+def _quality_alerts(reviews, products_by_id):
+    grouped = {}
+    for review in reviews:
+        product_id = _resolve_int(review.get("book_id"), 0)
+        if product_id <= 0:
+            continue
+
+        if product_id not in grouped:
+            grouped[product_id] = {"count": 0, "rating_total": 0.0, "negative": 0}
+
+        grouped[product_id]["count"] += 1
+        grouped[product_id]["rating_total"] += float(review.get("rating", 0) or 0)
+
+        label = (review.get("sentiment_label") or "").strip().lower()
+        if label == "negative" or float(review.get("sentiment_score", 0.5) or 0.5) < 0.33:
+            grouped[product_id]["negative"] += 1
+
+    alerts = []
+    for product_id, stat in grouped.items():
+        count = stat["count"]
+        if count < 2:
+            continue
+
+        avg_rating = stat["rating_total"] / max(1, count)
+        negative_ratio = stat["negative"] / max(1, count)
+        if avg_rating > 2.8 and negative_ratio < 0.35:
+            continue
+
+        product = products_by_id.get(product_id) or {}
+        alerts.append(
+            {
+                "product_id": product_id,
+                "title": product.get("title") or f"San pham #{product_id}",
+                "category_label": product.get("category_label") or "Khac",
+                "review_count": count,
+                "average_rating": round(avg_rating, 3),
+                "negative_ratio": round(negative_ratio, 3),
+            }
+        )
+
+    alerts.sort(key=lambda item: (item["negative_ratio"], -item["average_rating"]), reverse=True)
+    return alerts[:12]
 
 
 def _auth_request(method, endpoint, **kwargs):
@@ -701,12 +828,16 @@ def _collect_service_health():
         ("fashion-service", f"{FASHION_SERVICE_URL}/health/"),
         ("household-service", f"{HOUSEHOLD_SERVICE_URL}/health/"),
         ("electronics-service", f"{ELECTRONICS_SERVICE_URL}/health/"),
+        ("beauty-service", f"{BEAUTY_SERVICE_URL}/health/"),
+        ("grocery-service", f"{GROCERY_SERVICE_URL}/health/"),
+        ("sports-service", f"{SPORTS_SERVICE_URL}/health/"),
         ("cart-service", f"{CART_SERVICE_URL}/health/"),
         ("customer-service", f"{CUSTOMER_SERVICE_URL}/health/"),
         ("catalog-service", f"{CATALOG_SERVICE_URL}/health/"),
         ("order-service", f"{ORDER_SERVICE_URL}/health/"),
         ("comment-rate-service", f"{COMMENT_RATE_SERVICE_URL}/health/"),
         ("recommender-ai-service", f"{RECOMMENDER_AI_SERVICE_URL}/health/"),
+        ("search-ai-service", f"{SEARCH_AI_SERVICE_URL}/health/"),
         ("auth-service", f"{AUTH_SERVICE_URL}/health/"),
     ]
     results = [{"name": "api-gateway", "healthy": True, "detail": "ready"}]
@@ -749,14 +880,34 @@ def shop(request):
     selected_category = (request.GET.get("category") or "").strip().lower()
 
     books, product_warnings = _fetch_all_products()
+    semantic_error = None
 
     if search_query:
-        books = [
-            book
-            for book in books
-            if search_query in (book.get("title") or "").lower()
-            or search_query in (book.get("author") or "").lower()
-        ]
+        semantic_payload, semantic_error = _search_semantic(search_query, top_k=80)
+        semantic_rows = semantic_payload.get("results", []) if isinstance(semantic_payload, dict) else []
+
+        if semantic_rows:
+            rank_map = {
+                _resolve_int(row.get("product_id"), 0): {
+                    "rank": index,
+                    "score": row.get("score", 0),
+                }
+                for index, row in enumerate(semantic_rows)
+                if _resolve_int(row.get("product_id"), 0) > 0
+            }
+
+            books = [book for book in books if book.get("id") in rank_map]
+            books.sort(key=lambda item: rank_map.get(item.get("id"), {}).get("rank", 9999))
+            for book in books:
+                book["semantic_score"] = rank_map.get(book.get("id"), {}).get("score", 0)
+        else:
+            books = [
+                book
+                for book in books
+                if search_query in (book.get("title") or "").lower()
+                or search_query in (book.get("author") or "").lower()
+            ]
+
     if selected_category and selected_category in CATEGORY_LABELS:
         books = [book for book in books if (book.get("category") or "sach") == selected_category]
 
@@ -770,9 +921,15 @@ def shop(request):
         recommendations = recommendation_data.get("recommendations", [])
         for item in recommendations:
             raw_book_id = item.get("book_id")
-            if raw_book_id:
-                recommended_ids.add(_encode_product_id("sach", raw_book_id))
-                recommended_ids.add(raw_book_id)
+            normalized_id = _resolve_int(raw_book_id, 0)
+            if normalized_id <= 0:
+                continue
+
+            if normalized_id >= PRODUCT_ID_OFFSETS["sach"]:
+                recommended_ids.add(normalized_id)
+            else:
+                recommended_ids.add(_encode_product_id("sach", normalized_id))
+                recommended_ids.add(normalized_id)
 
     cart_ok, cart_data, cart_error = _service_request("get", f"{CART_SERVICE_URL}/carts/{customer_id}/")
     cart_payload = cart_data if cart_ok and isinstance(cart_data, dict) else {"items": []}
@@ -798,7 +955,7 @@ def shop(request):
         "total_price": total_price,
         "service_warnings": [
             warning
-            for warning in [*product_warnings, recommendation_error, cart_error]
+            for warning in [*product_warnings, recommendation_error, semantic_error, cart_error]
             if warning
         ],
     }
@@ -821,6 +978,7 @@ def product_detail(request, product_id):
     items = cart_payload.get("items", [])
     total_quantity, total_price = _enrich_cart_items(items, books)
     favorite_ids = _favorite_ids(request)
+    insights, insights_error = _review_insights(book_id=product.get("id"))
 
     context = {
         "customer_id": customer_id,
@@ -832,7 +990,8 @@ def product_detail(request, product_id):
         "item_count": len(items),
         "total_quantity": total_quantity,
         "total_price": total_price,
-        "service_warnings": [warning for warning in [cart_error] if warning],
+        "review_insights": insights,
+        "service_warnings": [warning for warning in [cart_error, insights_error] if warning],
     }
     context.update(_role_context(request.user))
     return render(request, "product_detail.html", context)
@@ -897,6 +1056,7 @@ def _build_workspace(customer_id):
         "get",
         f"{RECOMMENDER_AI_SERVICE_URL}/recommendations/{customer_id}/",
     )
+    insights_data, insights_error = _review_insights()
     cart_ok, cart_data, cart_error = _service_request("get", f"{CART_SERVICE_URL}/carts/{customer_id}/")
 
     customer = next((item for item in customers if item.get("id") == customer_id), None)
@@ -940,9 +1100,10 @@ def _build_workspace(customer_id):
         "recommendations": recommendations,
         "order_count": len(orders),
         "review_count": len(reviews),
+        "review_insights": insights_data,
         "service_warnings": [
             warning
-            for warning in [customer_error, *product_warnings, order_error, purchased_error, review_error, recommendation_error, cart_error]
+            for warning in [customer_error, *product_warnings, order_error, purchased_error, review_error, recommendation_error, insights_error, cart_error]
             if warning
         ],
     }
@@ -999,6 +1160,57 @@ def admin_users(request):
     }
     context.update(_role_context(request.user))
     return render(request, "admin_users.html", context)
+
+
+@role_required(ROLE_STAFF)
+def ai_dashboard(request):
+    if request.method == "POST":
+        action = (request.POST.get("action") or "").strip().lower()
+        if action == "retrain":
+            retrain_ok, retrain_data, retrain_error = _service_request(
+                "post",
+                f"{RECOMMENDER_AI_SERVICE_URL}/ai/retrain/",
+                json={},
+            )
+            if retrain_ok:
+                messages.success(request, "Da trigger retrain cho recommender-ai-service.")
+            else:
+                messages.error(request, retrain_error or "Khong trigger duoc retrain.")
+            return redirect("/staff/ai/dashboard/")
+
+    reviews_ok, reviews_data, review_error = _service_request("get", f"{COMMENT_RATE_SERVICE_URL}/reviews/")
+    insight_data, insight_error = _review_insights()
+    model_ok, model_data, model_error = _service_request("get", f"{COMMENT_RATE_SERVICE_URL}/reviews/model-status/")
+    drift_ok, drift_data, drift_error = _service_request("get", f"{RECOMMENDER_AI_SERVICE_URL}/ai/drift/")
+    products, product_warnings = _fetch_all_products()
+
+    review_rows = reviews_data if reviews_ok and isinstance(reviews_data, list) else []
+    product_map = {}
+    for item in products:
+        product_id = item.get("id")
+        if product_id:
+            product_map[product_id] = item
+
+        if item.get("category") == "sach" and item.get("local_id"):
+            product_map[item.get("local_id")] = item
+
+    trend_rows = _weekly_sentiment_trend(review_rows)
+    quality_alerts = _quality_alerts(review_rows, product_map)
+
+    context = {
+        "review_insights": insight_data if isinstance(insight_data, dict) else {},
+        "model_status": model_data if model_ok and isinstance(model_data, dict) else {},
+        "drift_status": drift_data if drift_ok and isinstance(drift_data, dict) else {},
+        "weekly_trend": trend_rows,
+        "quality_alerts": quality_alerts,
+        "service_warnings": [
+            warning
+            for warning in [review_error, insight_error, model_error, drift_error, *product_warnings]
+            if warning
+        ],
+    }
+    context.update(_role_context(request.user))
+    return render(request, "ai_dashboard.html", context)
 
 
 @role_required(ROLE_STAFF)

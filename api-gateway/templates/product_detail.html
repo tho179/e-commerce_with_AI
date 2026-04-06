@@ -65,6 +65,34 @@
                 <a class="btn btn-primary btn-block mt-12" href="/customer/cart/{{ customer_id }}/">Thanh toan ngay</a>
             </div>
         </div>
+
+        {% if review_insights.total_reviews %}
+        <div class="card" style="margin-top:12px;">
+            <div class="card-title">Review Intelligence</div>
+            <div class="card-body" style="padding-top:0;">
+                <div style="padding:12px 0; border-bottom:1px solid var(--line);">
+                    <div class="muted" style="font-size:12px;">Tong review</div>
+                    <div class="fw-600">{{ review_insights.total_reviews }}</div>
+                </div>
+                <div style="padding:12px 0; border-bottom:1px solid var(--line);">
+                    <div class="muted" style="font-size:12px;">Average rating</div>
+                    <div class="fw-600">{{ review_insights.average_rating }}</div>
+                </div>
+                <div style="padding:12px 0; border-bottom:1px solid var(--line);">
+                    <div class="muted" style="font-size:12px;">Average sentiment</div>
+                    <div class="fw-600">{{ review_insights.average_sentiment_score }}</div>
+                </div>
+                {% if review_insights.top_aspects %}
+                <div style="padding:12px 0 0;">
+                    <div class="muted" style="font-size:12px; margin-bottom:6px;">Top aspects</div>
+                    {% for aspect in review_insights.top_aspects %}
+                    <span class="tag" style="margin-right:6px;">{{ aspect.aspect }} ({{ aspect.count }})</span>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
     </div>
 </div>
 {% endblock %}

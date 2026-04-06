@@ -2,6 +2,7 @@ from django.contrib import admin
 from django.urls import path
 
 from .views import (
+    ai_dashboard,
     admin_users,
     add_cart_item,
     book_list,
@@ -44,6 +45,7 @@ urlpatterns = [
     path('admin/users/', admin_users),
     path('staff/books/', book_list),
     path('staff/health/', service_health),
+    path('staff/ai/dashboard/', ai_dashboard),
     path('staff/ops/metrics/', ops_metrics),
     path('staff/ops/traces/', ops_traces),
     path('staff/books/save/', save_book),

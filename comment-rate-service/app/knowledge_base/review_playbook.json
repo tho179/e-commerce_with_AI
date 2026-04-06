@@ -1,0 +1,42 @@
+{
+  "version": "1.0.0",
+  "domain": "ecommerce-review-intelligence",
+  "aspects": [
+    {
+      "id": "delivery",
+      "keywords": ["giao hang", "ship", "van chuyen", "tre", "cham", "nhanh"],
+      "action_positive": "Tang ngan sach cho kenh van chuyen dang duoc danh gia tot va gan nhan giao nhanh.",
+      "action_neutral": "Theo doi SLA giao hang theo khu vuc va thu thap them review.",
+      "action_negative": "Mo ticket voi doi logistics, kiem tra SLA va cap nhat ETA chu dong cho khach."
+    },
+    {
+      "id": "product_quality",
+      "keywords": ["chat luong", "be", "hong", "loi", "tot", "ben", "that vong"],
+      "action_positive": "Uu tien day san pham vao danh muc de xuat va campaign social proof.",
+      "action_neutral": "Kiem tra ty le loi theo lo hang de xac minh xu huong.",
+      "action_negative": "Kich hoat quy trinh QA, khoa lo hang co rui ro va thong bao doi cung ung."
+    },
+    {
+      "id": "pricing_value",
+      "keywords": ["gia", "dat", "re", "dang tien", "khuyen mai", "sale"],
+      "action_positive": "Nhan rong combo va upsell theo phan khuc gia khach hang chap nhan.",
+      "action_neutral": "Thu nghiem A/B gia va voucher de tim diem can bang chuyen doi.",
+      "action_negative": "Ra soat gia doi thu, can nhac voucher bo sung va toi uu bundle.",
+      "business_kpi": ["conversion_rate", "gross_margin"]
+    },
+    {
+      "id": "customer_service",
+      "keywords": ["ho tro", "tu van", "phan hoi", "cham soc", "nhan vien"],
+      "action_positive": "Nhan rong script ho tro hieu qua sang cac kenh chat/email.",
+      "action_neutral": "Theo doi FRT va CSAT theo ca truc de cai tien lien tuc.",
+      "action_negative": "Dao tao lai quy trinh cham soc, bo sung checklist xu ly khieu nai."
+    },
+    {
+      "id": "packaging",
+      "keywords": ["dong goi", "hop", "vo", "mop", "bao bi", "tem"],
+      "action_positive": "Duy tri tieu chuan dong goi va dua vao quy trinh default.",
+      "action_neutral": "Danh gia xac suat hu hong theo don vi van chuyen.",
+      "action_negative": "Cap nhat tieu chuan bao bi, bo sung vat lieu chong soc va audit kho."
+    }
+  ]
+}

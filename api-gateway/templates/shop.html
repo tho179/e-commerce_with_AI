@@ -2,108 +2,276 @@
 {% block title %}Mua sam | BookShop{% endblock %}
 {% block nav_shop %}active{% endblock %}
 
+{% block extra_css %}
+<style>
+    .hero-banner {
+        position: relative;
+        border-radius: 18px;
+        overflow: hidden;
+        margin-bottom: 14px;
+        border: 1px solid #e8d7cb;
+        background:
+            radial-gradient(circle at 88% 8%, rgba(255, 255, 255, 0.45), transparent 38%),
+            linear-gradient(118deg, #182f42 0%, #24516f 44%, #2e7491 100%);
+        color: #fff;
+    }
+
+    .hero-grid {
+        display: grid;
+        grid-template-columns: 1.2fr 1fr;
+        gap: 14px;
+        padding: 18px;
+    }
+
+    .hero-title {
+        font-size: clamp(24px, 3.6vw, 34px);
+        line-height: 1.15;
+        font-weight: 800;
+        margin-bottom: 8px;
+    }
+
+    .hero-sub {
+        color: rgba(255, 255, 255, 0.88);
+        max-width: 680px;
+        margin-bottom: 12px;
+    }
+
+    .hero-stats {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 8px;
+    }
+
+    .hero-stat {
+        background: rgba(255, 255, 255, 0.15);
+        border: 1px solid rgba(255, 255, 255, 0.26);
+        border-radius: 12px;
+        padding: 10px;
+    }
+
+    .hero-stat b {
+        display: block;
+        font-size: 18px;
+        margin-bottom: 2px;
+    }
+
+    .hero-right {
+        background: rgba(255, 255, 255, 0.1);
+        border: 1px solid rgba(255, 255, 255, 0.25);
+        border-radius: 14px;
+        padding: 14px;
+    }
+
+    .hero-chip-wrap {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 10px;
+    }
+
+    .hero-chip {
+        border-radius: 999px;
+        padding: 6px 12px;
+        font-size: 12px;
+        border: 1px solid rgba(255, 255, 255, 0.35);
+        background: rgba(255, 255, 255, 0.12);
+    }
+
+    .shop-layout {
+        display: grid;
+        grid-template-columns: 1fr 340px;
+        gap: 12px;
+        align-items: start;
+    }
+
+    .search-surface {
+        background: #fff;
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        padding: 14px;
+        margin-bottom: 12px;
+        box-shadow: var(--shadow);
+    }
+
+    .product-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+        gap: 12px;
+        padding: 16px;
+    }
+
+    .product-card {
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        background: #fff;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .product-thumb {
+        height: 168px;
+        background: linear-gradient(150deg, #f8ede5, #fff6f1);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+    }
+
+    .product-thumb img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .product-body {
+        padding: 12px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        flex: 1;
+    }
+
+    .product-title {
+        font-size: 15px;
+        font-weight: 700;
+        min-height: 40px;
+        line-height: 1.35;
+    }
+
+    .price-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
+    }
+
+    @media (max-width: 940px) {
+        .hero-grid,
+        .shop-layout {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="card" style="margin-bottom:12px; background:linear-gradient(140deg,#ffe5d7,#fff3ea);">
-    <div class="card-body" style="display:flex; justify-content:space-between; gap:12px; align-items:center; flex-wrap:wrap;">
+<div class="hero-banner">
+    <div class="hero-grid">
         <div>
-            <div style="font-size:20px; font-weight:800; margin-bottom:2px;">Cua hang da nganh BookShop</div>
-            <div class="muted">Khong chi sach, ban co the mua quan ao, do gia dung va thiet bi dien tu ngay tai day.</div>
+            <div class="hero-title">E-commerce Marketplace da nganh cho moi nhu cau mua sam</div>
+            <div class="hero-sub">Tap trung san pham chat luong, tim kiem semantic bang AI va de xuat ca nhan hoa theo hanh vi cua ban.</div>
+            <div class="hero-stats">
+                <div class="hero-stat"><b>{{ books|length }}</b><span>San pham trong bo loc</span></div>
+                <div class="hero-stat"><b>{{ favorite_count }}</b><span>San pham yeu thich</span></div>
+                <div class="hero-stat"><b>{{ item_count }}</b><span>Mat hang trong gio</span></div>
+            </div>
         </div>
-        <div class="flex">
-            <a class="btn btn-ghost" href="/customer/{{ customer_id }}/favorites/">Yeu thich ({{ favorite_count }})</a>
-            <a class="btn btn-primary" href="/customer/cart/{{ customer_id }}/">Di den thanh toan</a>
+
+        <div class="hero-right">
+            <div style="font-size:14px; font-weight:700; margin-bottom:4px;">Danh muc noi bat</div>
+            <div class="muted" style="color:rgba(255,255,255,0.84);">Beauty, Grocery, Sports da duoc bo sung de lam phong phu du lieu recommendation va review intelligence.</div>
+            <div class="hero-chip-wrap">
+                {% for category_key, category_label in category_choices.items %}
+                <span class="hero-chip">{{ category_label }}</span>
+                {% endfor %}
+            </div>
+            <div class="flex mt-12" style="justify-content:flex-end;">
+                <a class="btn btn-ghost" href="/customer/{{ customer_id }}/favorites/">Yeu thich ({{ favorite_count }})</a>
+                <a class="btn btn-primary" href="/customer/cart/{{ customer_id }}/">Thanh toan ngay</a>
+            </div>
         </div>
     </div>
 </div>
 
-<div class="card" style="margin-bottom:12px;">
-    <div class="card-body">
-        <form method="get" action="/shop/" class="form-row" style="align-items:end;">
-            <div class="field" style="margin-bottom:0;">
-                <label class="lbl">Tim theo ten san pham / thuong hieu</label>
-                <input class="input" name="q" value="{{ search_query }}" placeholder="Vi du: AirChef, Laptop">
-            </div>
-            <div class="field" style="margin-bottom:0;">
-                <label class="lbl">Danh muc</label>
-                <select class="select" name="category">
-                    <option value="">Tat ca danh muc</option>
-                    {% for category_key, category_label in category_choices.items %}
-                    <option value="{{ category_key }}" {% if selected_category == category_key %}selected{% endif %}>{{ category_label }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div class="flex" style="justify-content:flex-end;">
-                <button class="btn btn-primary" type="submit">Loc san pham</button>
-                <a class="btn btn-ghost" href="/shop/">Xoa loc</a>
-            </div>
-        </form>
-    </div>
+<div class="search-surface">
+    <form method="get" action="/shop/" class="form-row" style="align-items:end;">
+        <div class="field" style="margin-bottom:0;">
+            <label class="lbl">Tim theo ten, thuong hieu hoac y dinh (semantic search)</label>
+            <input class="input" name="q" value="{{ search_query }}" placeholder="Vi du: serum da nhay cam, do tap gym, sua huu co">
+        </div>
+        <div class="field" style="margin-bottom:0;">
+            <label class="lbl">Danh muc</label>
+            <select class="select" name="category">
+                <option value="">Tat ca danh muc</option>
+                {% for category_key, category_label in category_choices.items %}
+                <option value="{{ category_key }}" {% if selected_category == category_key %}selected{% endif %}>{{ category_label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="flex" style="justify-content:flex-end;">
+            <button class="btn btn-primary" type="submit">Tim + Loc</button>
+            <a class="btn btn-ghost" href="/shop/">Dat lai</a>
+        </div>
+    </form>
 </div>
 
-<div class="page-grid">
+<div class="shop-layout">
     <div class="card">
         <div class="card-title" style="display:flex; justify-content:space-between; align-items:center;">
-            <span>Danh muc san pham</span>
+            <span>Danh sach san pham</span>
             <span class="tag">{{ books|length }} san pham</span>
         </div>
 
         {% if books %}
-        <div style="padding:16px; display:grid; grid-template-columns:repeat(auto-fill,minmax(250px,1fr)); gap:12px;">
+        <div class="product-grid">
             {% for book in books %}
-            <div style="border:1px solid var(--line); border-radius:10px; padding:12px; background:#fff; display:flex; flex-direction:column; gap:10px;">
-                <div style="height:140px; border-radius:8px; overflow:hidden; background:#f8f1eb; display:flex; align-items:center; justify-content:center;">
+            <div class="product-card">
+                <div class="product-thumb">
                     {% if book.image_url %}
-                    <img src="{{ book.image_url }}" alt="{{ book.title }}" style="width:100%; height:100%; object-fit:cover;">
+                    <img src="{{ book.image_url }}" alt="{{ book.title }}">
                     {% else %}
                     <span class="muted">Khong co anh</span>
                     {% endif %}
                 </div>
 
-                <div>
-                    <div class="tag" style="margin-bottom:6px;">{{ book.category_label }}</div>
-                    <div style="font-weight:700; line-height:1.35; min-height:38px;">{{ book.title }}</div>
+                <div class="product-body">
+                    <div class="flex" style="justify-content:space-between;">
+                        <span class="tag">{{ book.category_label }}</span>
+                        {% if book.semantic_score %}
+                        <span class="tag" style="background:#edf7ff; color:#145b8d;">AI {{ book.semantic_score }}</span>
+                        {% endif %}
+                    </div>
+                    <div class="product-title">{{ book.title }}</div>
                     <div class="muted" style="font-size:13px;">Thuong hieu: {{ book.author }}</div>
                     {% if book.description %}
                     <div class="muted" style="font-size:12px; margin-top:4px; min-height:34px;">{{ book.description|truncatechars:70 }}</div>
                     {% endif %}
-                </div>
 
-                <div class="flex" style="justify-content:space-between; align-items:flex-end;">
-                    <div>
+                    <div class="price-row">
+                        <div>
                         <div class="price" style="font-size:17px;">{{ book.effective_price|default:book.price }} VNĐ</div>
                         {% if book.active_promotion %}
                         <div class="tag" style="margin-top:4px; background:#fff3f0; color:#b33f21;">{{ book.active_promotion.name }} -{{ book.active_promotion.discount_percent }}%</div>
                         {% endif %}
+                        </div>
+                        <div class="tag">Ton: {{ book.stock|default:0 }}</div>
                     </div>
-                    <div class="tag">Ton: {{ book.stock|default:0 }}</div>
-                </div>
 
-                <div class="flex" style="margin-top:auto; justify-content:space-between;">
-                    <a class="btn btn-ghost btn-sm" href="/shop/{{ book.id }}/">Xem chi tiet</a>
-                    <form method="post" action="/customer/favorites/{{ book.id }}/toggle/">
+                    <div class="flex" style="margin-top:auto; justify-content:space-between;">
+                        <a class="btn btn-ghost btn-sm" href="/shop/{{ book.id }}/">Chi tiet</a>
+                        <form method="post" action="/customer/favorites/{{ book.id }}/toggle/">
+                            {% csrf_token %}
+                            <input type="hidden" name="next" value="/shop/">
+                            <button class="btn btn-outline btn-sm" type="submit">{% if book.id in favorite_ids %}Bo yeu thich{% else %}Yeu thich{% endif %}</button>
+                        </form>
+                    </div>
+
+                    <form method="post" action="/customer/cart/{{ customer_id }}/items/add/">
                         {% csrf_token %}
-                        <input type="hidden" name="next" value="/shop/">
-                        <button class="btn btn-outline btn-sm" type="submit">
-                            {% if book.id in favorite_ids %}Bo yeu thich{% else %}Yeu thich{% endif %}
-                        </button>
+                        <input type="hidden" name="cart_id" value="{{ cart_id|default:'' }}">
+                        <input type="hidden" name="book_id" value="{{ book.id }}">
+                        <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                        <div class="flex" style="justify-content:space-between;">
+                            <input class="input" type="number" min="1" name="quantity" value="1" style="width:68px; padding:7px 8px;">
+                            <button class="btn btn-primary btn-sm" type="submit" {% if book.stock|default:0 <= 0 %}disabled{% endif %}>Them vao gio</button>
+                        </div>
                     </form>
                 </div>
-
-                <form method="post" action="/customer/cart/{{ customer_id }}/items/add/">
-                    {% csrf_token %}
-                    <input type="hidden" name="cart_id" value="{{ cart_id|default:'' }}">
-                    <input type="hidden" name="book_id" value="{{ book.id }}">
-                    <input type="hidden" name="next" value="{{ request.get_full_path }}">
-                    <div class="flex" style="justify-content:space-between;">
-                        <input class="input" type="number" min="1" name="quantity" value="1" style="width:68px; padding:7px 8px;">
-                        <button class="btn btn-primary btn-sm" type="submit" {% if book.stock|default:0 <= 0 %}disabled{% endif %}>Them vao gio</button>
-                    </div>
-                </form>
             </div>
             {% endfor %}
         </div>
         {% else %}
-        <div class="empty">Khong tim thay san pham phu hop bo loc.</div>
+        <div class="empty">Khong tim thay san pham phu hop. Thu doi tu khoa hoac bo loc khac.</div>
         {% endif %}
     </div>
 
@@ -121,6 +289,14 @@
             </div>
         </div>
 
+        <div class="card" style="margin-bottom:12px;">
+            <div class="card-title">Quick Actions</div>
+            <div class="card-body">
+                <a class="btn btn-ghost btn-block" href="/customer/{{ customer_id }}/favorites/">Quan ly yeu thich</a>
+                <a class="btn btn-ghost btn-block mt-12" href="/customer/cart/{{ customer_id }}/">Don hang + Danh gia</a>
+            </div>
+        </div>
+
         <div class="card">
             <div class="card-title">Goi y cho ban</div>
             <div class="card-body" style="padding-top:10px;">
@@ -128,7 +304,7 @@
                     {% for rec in recommendations|slice:":5" %}
                     <div style="padding:10px 0; border-bottom:1px solid var(--line);">
                         <div class="fw-600">{{ rec.title }}</div>
-                        <div class="muted" style="font-size:12px;">Diem de xuat: {{ rec.score }}</div>
+                        <div class="muted" style="font-size:12px;">Diem de xuat: {{ rec.score }} · {{ rec.category|default:"khac" }}</div>
                     </div>
                     {% endfor %}
                 {% else %}

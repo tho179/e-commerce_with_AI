@@ -153,11 +153,21 @@
                 <div style="margin-top:16px; border-top:1px solid var(--line); padding-top:16px;">
                     {% for review in reviews %}
                     <div style="padding:10px 0; border-bottom:1px solid var(--line);">
-                        <div class="flex">
+                        <div class="flex" style="margin-bottom:4px;">
                             <span class="fw-600">San pham #{{ review.book_id }}</span>
                             <span class="tag">{{ review.rating }}/5</span>
                         </div>
+                        {% if review.sentiment_label %}
+                        <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:6px;">
+                            <span class="tag">Sentiment: {{ review.sentiment_label }}</span>
+                            <span class="tag">AI score: {{ review.sentiment_score }}</span>
+                            {% for aspect in review.aspect_tags %}
+                            <span class="tag">{{ aspect }}</span>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
                         {% if review.comment %}<div class="muted" style="font-size:13px; margin-top:4px;">{{ review.comment }}</div>{% endif %}
+                        {% if review.advice %}<div class="muted" style="font-size:12px; margin-top:4px;">Goi y: {{ review.advice }}</div>{% endif %}
                     </div>
                     {% endfor %}
                 </div>
@@ -202,6 +212,34 @@
                 {% endif %}
             </div>
         </div>
+
+        {% if review_insights.total_reviews %}
+        <div class="card" style="margin-bottom:12px;">
+            <div class="card-title">Review Intelligence</div>
+            <div class="card-body" style="padding-top:0;">
+                <div style="padding:12px 0; border-bottom:1px solid var(--line);">
+                    <div class="muted" style="font-size:12px;">Tong review</div>
+                    <div class="fw-600">{{ review_insights.total_reviews }}</div>
+                </div>
+                <div style="padding:12px 0; border-bottom:1px solid var(--line);">
+                    <div class="muted" style="font-size:12px;">Average rating</div>
+                    <div class="fw-600">{{ review_insights.average_rating }}</div>
+                </div>
+                <div style="padding:12px 0; border-bottom:1px solid var(--line);">
+                    <div class="muted" style="font-size:12px;">Average sentiment</div>
+                    <div class="fw-600">{{ review_insights.average_sentiment_score }}</div>
+                </div>
+                {% if review_insights.recommended_actions %}
+                <div style="padding:12px 0 0;">
+                    <div class="muted" style="font-size:12px; margin-bottom:6px;">Recommended actions</div>
+                    {% for action in review_insights.recommended_actions %}
+                    <div class="tag" style="display:block; margin-bottom:6px; white-space:normal;">{{ action }}</div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
 
         {% if recommendations %}
         <div class="card">
