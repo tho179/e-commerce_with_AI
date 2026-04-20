@@ -8,19 +8,19 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         seeds = [
             {
-                'name': 'Ao Hoodie Unisex Basic',
-                'description': 'Chat lieu ni mem, phu hop mua dong.',
+                'name': 'Áo Hoodie Unisex Basic',
+                'description': 'Chất liệu nỉ mềm, phù hợp mặc hằng ngày và mùa lạnh.',
                 'price': '399000',
                 'stock': 40,
                 'size': 'M',
-                'color': 'Den',
+                'color': 'Đen',
                 'material': 'Cotton',
                 'brand': 'UrbanViet',
                 'image_url': 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab',
             },
             {
-                'name': 'Quan Jean Slim Fit',
-                'description': 'Form slim, de phoi cung ao so mi.',
+                'name': 'Quần Jean Slim Fit',
+                'description': 'Form slim dễ phối cùng áo sơ mi hoặc áo thun.',
                 'price': '520000',
                 'stock': 35,
                 'size': 'L',
@@ -31,9 +31,12 @@ class Command(BaseCommand):
             },
         ]
 
+        valid_names = {payload['name'] for payload in seeds}
+        FashionProduct.objects.exclude(name__in=valid_names).delete()
+
         created = 0
         for payload in seeds:
-            _, was_created = FashionProduct.objects.get_or_create(name=payload['name'], defaults=payload)
+            _, was_created = FashionProduct.objects.update_or_create(name=payload['name'], defaults=payload)
             if was_created:
                 created += 1
 

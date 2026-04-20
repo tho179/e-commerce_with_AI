@@ -8,8 +8,8 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         seeds = [
             {
-                'name': 'Laptop ProBook 14',
-                'description': 'Laptop van phong gon nhe, pin ben.',
+                'name': 'Laptop ProBook 14 inch',
+                'description': 'Laptop văn phòng gọn nhẹ, pin bền, phù hợp học tập và làm việc.',
                 'price': '18990000',
                 'stock': 12,
                 'brand': 'ProBook',
@@ -19,8 +19,8 @@ class Command(BaseCommand):
                 'image_url': 'https://images.unsplash.com/photo-1496181133206-80ce9b88a853',
             },
             {
-                'name': 'Tai Nghe Bluetooth SoundAir X2',
-                'description': 'Chong on co ban, ket noi on dinh Bluetooth 5.3.',
+                'name': 'Tai nghe Bluetooth SoundAir X2',
+                'description': 'Chống ồn cơ bản, kết nối ổn định Bluetooth 5.3, pin lâu.',
                 'price': '1290000',
                 'stock': 28,
                 'brand': 'SoundAir',
@@ -31,9 +31,12 @@ class Command(BaseCommand):
             },
         ]
 
+        valid_names = {payload['name'] for payload in seeds}
+        ElectronicsProduct.objects.exclude(name__in=valid_names).delete()
+
         created = 0
         for payload in seeds:
-            _, was_created = ElectronicsProduct.objects.get_or_create(name=payload['name'], defaults=payload)
+            _, was_created = ElectronicsProduct.objects.update_or_create(name=payload['name'], defaults=payload)
             if was_created:
                 created += 1
 

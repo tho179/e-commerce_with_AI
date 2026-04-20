@@ -1,0 +1,6 @@
+django
+djangorestframework
+requests
+numpy
+pika
+neo4j

@@ -3,10 +3,7 @@ from django.db import models
 
 class Book(models.Model):
     CATEGORY_CHOICES = [
-        ("sach", "Sach"),
-        ("quan_ao", "Quan ao"),
-        ("gia_dung", "Do gia dung"),
-        ("dien_tu", "Thiet bi dien tu"),
+        ("sach", "Sách"),
     ]
 
     title = models.CharField(max_length=255)

@@ -9,8 +9,7 @@ WORKDIR /app
 COPY requirements.txt /app/
 
 # Chạy lệnh cài đặt với quyền ưu tiên
-RUN pip install --upgrade pip
-RUN pip install --no-cache-dir -r requirements.txt
+RUN python -m pip install --no-cache-dir --retries 20 --timeout 120 -r requirements.txt
 
 COPY . /app/
 

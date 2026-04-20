@@ -1,36 +1,37 @@
 {% extends "base.html" %}
-{% block title %}Quan ly san pham | BookShop{% endblock %}
+{% load currency_filters %}
+{% block title %}Quản lý sản phẩm | BookShop{% endblock %}
 {% block nav_books %}active{% endblock %}
 
 {% block content %}
 <div class="flex mt-8" style="margin-bottom:12px; justify-content:space-between; align-items:center;">
     <div>
-        <div style="font-size:18px; font-weight:600;">Quan ly san pham</div>
-        <div class="muted" style="font-size:13px;">{{ books|length }} san pham · Catalog: {{ catalog_count }} ban ghi</div>
+        <div style="font-size:18px; font-weight:600;">Quản lý sản phẩm</div>
+        <div class="muted" style="font-size:13px;">{{ books|length }} sản phẩm · Catalog: {{ catalog_count }} bản ghi</div>
     </div>
     <div class="flex">
         <form method="post" action="/staff/catalog/sync/">
             {% csrf_token %}
-            <button class="btn btn-ghost btn-sm" type="submit">Dong bo Catalog</button>
+            <button class="btn btn-ghost btn-sm" type="submit">Đồng bộ Catalog</button>
         </form>
     </div>
 </div>
 
 <div class="page-grid">
     <div class="card">
-        <div class="card-title">Danh sach san pham</div>
+        <div class="card-title">Danh sách sản phẩm</div>
         {% if books %}
         <div style="overflow-x:auto;">
             <table class="tbl">
                 <thead>
                     <tr>
                         <th style="width:40px;">ID</th>
-                        <th>Ten san pham</th>
-                        <th>Danh muc</th>
-                        <th>Thuong hieu</th>
-                        <th>Gia niem yet</th>
-                        <th>Gia hien tai</th>
-                        <th>Ton kho</th>
+                        <th>Tên sản phẩm</th>
+                        <th>Danh mục</th>
+                        <th>Thương hiệu</th>
+                        <th>Giá niêm yết</th>
+                        <th>Giá hiện tại</th>
+                        <th>Tồn kho</th>
                         <th style="width:120px;"></th>
                     </tr>
                 </thead>
@@ -41,15 +42,15 @@
                         <td><span class="fw-600">{{ book.title }}</span></td>
                         <td><span class="tag">{{ book.category|default:"sach" }}</span></td>
                         <td>{{ book.author }}</td>
-                        <td><span class="price">{{ book.price }} VNĐ</span></td>
-                        <td><span class="price">{{ book.effective_price }} VNĐ</span></td>
+                        <td><span class="price">{{ book.price|vnd }}</span></td>
+                        <td><span class="price">{{ book.effective_price|vnd }}</span></td>
                         <td>{{ book.stock }}</td>
                         <td>
                             <div class="flex">
-                                <a class="btn btn-ghost btn-sm" href="/staff/books/?edit_book={{ book.id }}">Sua</a>
+                                <a class="btn btn-ghost btn-sm" href="/staff/books/?edit_book={{ book.id }}">Sửa</a>
                                 <form method="post" action="/staff/books/{{ book.id }}/delete/" style="display:inline;">
                                     {% csrf_token %}
-                                    <button class="btn btn-danger btn-sm" type="submit">Xoa</button>
+                                    <button class="btn btn-danger btn-sm" type="submit">Xóa</button>
                                 </form>
                             </div>
                         </td>
@@ -59,43 +60,40 @@
             </table>
         </div>
         {% else %}
-        <div class="empty">Chua co san pham nao. Them san pham moi tu form ben phai.</div>
+        <div class="empty">Chưa có sản phẩm nào. Thêm sản phẩm mới từ form bên phải.</div>
         {% endif %}
     </div>
 
     <div>
         <div class="card">
-            <div class="card-title">{{ selected_book|yesno:"Sua san pham,Them san pham moi" }}</div>
+            <div class="card-title">{{ selected_book|yesno:"Sửa sản phẩm,Thêm sản phẩm mới" }}</div>
             <div class="card-body">
                 <form method="post" action="/staff/books/save/">
                     {% csrf_token %}
                     <input type="hidden" name="book_id" value="{{ selected_book.id|default:'' }}">
 
                     <div class="field">
-                        <label class="lbl">Ten san pham</label>
+                        <label class="lbl">Tên sản phẩm</label>
                         <input class="input" name="title" value="{{ selected_book.title|default:'' }}" required>
                     </div>
                     <div class="form-row">
                         <div class="field">
-                            <label class="lbl">Thuong hieu</label>
+                            <label class="lbl">Thương hiệu</label>
                             <input class="input" name="author" value="{{ selected_book.author|default:'' }}" required>
                         </div>
                         <div class="field">
-                            <label class="lbl">Danh muc</label>
+                            <label class="lbl">Danh mục</label>
                             <select class="select" name="category">
-                                <option value="sach" {% if selected_book.category == "sach" %}selected{% endif %}>Sach</option>
-                                <option value="quan_ao" {% if selected_book.category == "quan_ao" %}selected{% endif %}>Quan ao</option>
-                                <option value="gia_dung" {% if selected_book.category == "gia_dung" %}selected{% endif %}>Do gia dung</option>
-                                <option value="dien_tu" {% if selected_book.category == "dien_tu" %}selected{% endif %}>Thiet bi dien tu</option>
+                                <option value="sach" selected>Sách</option>
                             </select>
                         </div>
                     </div>
                     <div class="field">
-                        <label class="lbl">URL hinh anh</label>
+                        <label class="lbl">URL hình ảnh</label>
                         <input class="input" name="image_url" value="{{ selected_book.image_url|default:'' }}">
                     </div>
                     <div class="field">
-                        <label class="lbl">Mo ta</label>
+                        <label class="lbl">Mô tả</label>
                         <textarea class="textarea" name="description">{{ selected_book.description|default:'' }}</textarea>
                     </div>
                     <div class="form-row">
@@ -104,13 +102,13 @@
                             <input class="input" type="number" step="1000" min="0" name="price" value="{{ selected_book.price|default:'' }}" required>
                         </div>
                         <div class="field">
-                            <label class="lbl">Ton kho</label>
+                            <label class="lbl">Tồn kho</label>
                             <input class="input" type="number" min="0" name="stock" value="{{ selected_book.stock|default:'' }}" required>
                         </div>
                     </div>
                     <div class="flex">
-                        <button class="btn btn-primary" type="submit">{{ selected_book|yesno:"Luu thay doi,Them san pham" }}</button>
-                        {% if selected_book %}<a class="btn btn-ghost" href="/staff/books/">Huy</a>{% endif %}
+                        <button class="btn btn-primary" type="submit">{{ selected_book|yesno:"Lưu thay đổi,Thêm sản phẩm" }}</button>
+                        {% if selected_book %}<a class="btn btn-ghost" href="/staff/books/">Hủy</a>{% endif %}
                     </div>
                 </form>
             </div>
@@ -118,36 +116,36 @@
 
         {% if selected_book %}
         <div class="card mt-12">
-            <div class="card-title">Cap nhat gia</div>
+            <div class="card-title">Cập nhật giá</div>
             <div class="card-body">
                 <form method="post" action="/staff/books/{{ selected_book.id }}/price/">
                     {% csrf_token %}
                     <div class="field">
-                        <label class="lbl">Gia moi (VNĐ)</label>
+                        <label class="lbl">Giá mới (VNĐ)</label>
                         <input class="input" type="number" step="1000" min="0" name="price" value="{{ selected_book.price }}" required>
                     </div>
-                    <button class="btn btn-primary" type="submit">Cap nhat gia</button>
+                    <button class="btn btn-primary" type="submit">Cập nhật giá</button>
                 </form>
             </div>
         </div>
 
         <div class="card mt-12">
-            <div class="card-title">Them khuyen mai</div>
+            <div class="card-title">Thêm khuyến mãi</div>
             <div class="card-body">
                 {% if selected_book.active_promotion %}
-                <div class="msg-warning" style="margin-bottom:12px;">Khuyen mai hien tai: {{ selected_book.active_promotion.name }} - {{ selected_book.active_promotion.discount_percent }}%</div>
+                <div class="msg-warning" style="margin-bottom:12px;">Khuyến mãi hiện tại: {{ selected_book.active_promotion.name }} - {{ selected_book.active_promotion.discount_percent }}%</div>
                 {% endif %}
                 <form method="post" action="/staff/books/{{ selected_book.id }}/promotions/add/">
                     {% csrf_token %}
                     <div class="field">
-                        <label class="lbl">Ten chuong trinh</label>
-                        <input class="input" name="name" placeholder="Khuyen mai cuoi tuan" required>
+                        <label class="lbl">Tên chương trình</label>
+                        <input class="input" name="name" placeholder="Khuyến mãi cuối tuần" required>
                     </div>
                     <div class="field">
-                        <label class="lbl">Giam gia (%)</label>
+                        <label class="lbl">Giảm giá (%)</label>
                         <input class="input" type="number" min="1" max="100" name="discount_percent" value="10" required>
                     </div>
-                    <button class="btn btn-primary" type="submit">Them khuyen mai</button>
+                    <button class="btn btn-primary" type="submit">Thêm khuyến mãi</button>
                 </form>
             </div>
         </div>
@@ -161,7 +159,7 @@
                 <div style="padding:10px 0; border-bottom:1px solid var(--line);">
                     <div class="fw-600">{{ book.title }}</div>
                     <div class="muted" style="font-size:13px;">{{ book.author }}</div>
-                    <div class="price" style="font-size:13px; margin-top:4px;">{{ book.price }} VNĐ</div>
+                    <div class="price" style="font-size:13px; margin-top:4px;">{{ book.price|vnd }}</div>
                 </div>
                 {% endfor %}
             </div>

@@ -1,17 +1,17 @@
 {% extends "base.html" %}
-{% block title %}Phan quyen | BookShop{% endblock %}
+{% block title %}Phân quyền | BookShop{% endblock %}
 {% block nav_admin_users %}active{% endblock %}
 
 {% block content %}
 <div class="flex mt-8" style="margin-bottom:12px; justify-content:space-between; align-items:center;">
     <div>
-        <div style="font-size:18px; font-weight:700;">Quan ly phan quyen nguoi dung</div>
-        <div class="muted" style="font-size:13px;">Cap role Admin / Staff / Customer cho tai khoan he thong.</div>
+        <div style="font-size:18px; font-weight:700;">Quản lý phân quyền người dùng</div>
+        <div class="muted" style="font-size:13px;">Cấp role Admin / Staff / Customer cho tài khoản hệ thống.</div>
     </div>
 </div>
 
 <div class="card">
-    <div class="card-title">Danh sach tai khoan</div>
+    <div class="card-title">Danh sách tài khoản</div>
     {% if users %}
     <div style="overflow-x:auto;">
         <table class="tbl">
@@ -20,8 +20,8 @@
                     <th style="width:55px;">ID</th>
                     <th>Username</th>
                     <th>Email</th>
-                    <th>Role hien tai</th>
-                    <th style="width:280px;">Cap nhat role</th>
+                    <th>Role hiện tại</th>
+                    <th style="width:280px;">Cập nhật role</th>
                 </tr>
             </thead>
             <tbody>
@@ -39,7 +39,7 @@
                     </td>
                     <td>
                         {% if item.is_superuser %}
-                        <span class="muted">Mac dinh he thong</span>
+                        <span class="muted">Mặc định hệ thống</span>
                         {% else %}
                         <form method="post" action="/admin/users/" class="flex">
                             {% csrf_token %}
@@ -49,7 +49,7 @@
                                 <option value="{{ role_name }}" {% if item.role == role_name %}selected{% endif %}>{{ role_name }}</option>
                                 {% endfor %}
                             </select>
-                            <button class="btn btn-primary btn-sm" type="submit">Luu</button>
+                            <button class="btn btn-primary btn-sm" type="submit">Lưu</button>
                         </form>
                         {% endif %}
                     </td>
@@ -59,7 +59,7 @@
         </table>
     </div>
     {% else %}
-    <div class="empty">Chua co tai khoan nao trong he thong.</div>
+    <div class="empty">Chưa có tài khoản nào trong hệ thống.</div>
     {% endif %}
 </div>
 {% endblock %}

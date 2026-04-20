@@ -1,5 +1,0 @@
-django
-djangorestframework
-requests
-numpy
-pika

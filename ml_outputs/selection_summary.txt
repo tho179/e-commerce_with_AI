@@ -1,0 +1,6 @@
+Model ranking (by macro_f1 then accuracy):
+- LSTM: accuracy=0.2080, macro_f1=0.2024, macro_precision=0.2274, macro_recall=0.2083
+- biLSTM: accuracy=0.2053, macro_f1=0.1995, macro_precision=0.2028, macro_recall=0.2050
+- RNN: accuracy=0.1947, macro_f1=0.1952, macro_precision=0.1952, macro_recall=0.1958
+
+Selected model_best: LSTM

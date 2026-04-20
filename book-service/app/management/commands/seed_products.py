@@ -7,88 +7,73 @@ from app.models import Book
 
 PRODUCTS = [
     {
-        "title": "Ao khoac gio nam Urban Fit",
-        "author": "Urban Fit",
-        "category": "quan_ao",
-        "description": "Ao khoac chong gio chat lieu nhe, phu hop di hoc va di lam.",
-        "image_url": "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab",
-        "price": Decimal("399000"),
-        "stock": 45,
-    },
-    {
-        "title": "Vay midi nu Linen Soft",
-        "author": "Linen Soft",
-        "category": "quan_ao",
-        "description": "Vay midi thoang mat, phu hop di choi cuoi tuan.",
-        "image_url": "https://images.unsplash.com/photo-1496747611176-843222e1e57c",
-        "price": Decimal("459000"),
-        "stock": 30,
-    },
-    {
-        "title": "May xay sinh to SmartBlend 700W",
-        "author": "SmartHome",
-        "category": "gia_dung",
-        "description": "May xay da nang 3 toc do, coi thuy tinh day dan.",
-        "image_url": "https://images.unsplash.com/photo-1570222094114-d054a817e56b",
-        "price": Decimal("890000"),
-        "stock": 28,
-    },
-    {
-        "title": "Noi chien khong dau AirChef 6L",
-        "author": "AirChef",
-        "category": "gia_dung",
-        "description": "Noi chien 6L dieu khien cam ung, tiet kiem thoi gian nau.",
-        "image_url": "https://images.unsplash.com/photo-1585515656240-2f8a6fbbf468",
-        "price": Decimal("1690000"),
-        "stock": 24,
-    },
-    {
-        "title": "Tai nghe Bluetooth NoiseFree X2",
-        "author": "NoiseFree",
-        "category": "dien_tu",
-        "description": "Tai nghe chong on chu dong, pin toi da 35 gio.",
-        "image_url": "https://images.unsplash.com/photo-1505740420928-5e560c06d30e",
-        "price": Decimal("1290000"),
-        "stock": 40,
-    },
-    {
-        "title": "Laptop WorkPro 14 inch i5",
-        "author": "WorkPro",
-        "category": "dien_tu",
-        "description": "Laptop van phong 14 inch, SSD 512GB, RAM 16GB.",
-        "image_url": "https://images.unsplash.com/photo-1496181133206-80ce9b88a853",
-        "price": Decimal("17990000"),
-        "stock": 12,
-    },
-    {
-        "title": "Sach: Tu duy nhanh va cham",
+        "title": "Tư duy nhanh và chậm",
         "author": "Daniel Kahneman",
         "category": "sach",
-        "description": "Tac pham noi tieng ve tam ly hoc hanh vi va ra quyet dinh.",
+        "description": "Tác phẩm kinh điển về tâm lý học hành vi và quá trình ra quyết định.",
         "image_url": "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c",
         "price": Decimal("189000"),
-        "stock": 60,
+        "stock": 90,
     },
     {
-        "title": "Sach: Nha gia kim",
+        "title": "Nhà giả kim",
         "author": "Paulo Coelho",
         "category": "sach",
-        "description": "Tieu thuyet truyen cam hung cho hanh trinh theo duoi uoc mo.",
+        "description": "Tiểu thuyết truyền cảm hứng về hành trình theo đuổi ước mơ.",
         "image_url": "https://images.unsplash.com/photo-1512820790803-83ca734da794",
         "price": Decimal("99000"),
-        "stock": 85,
+        "stock": 120,
+    },
+    {
+        "title": "Đắc nhân tâm",
+        "author": "Dale Carnegie",
+        "category": "sach",
+        "description": "Cuốn sách kinh điển về nghệ thuật giao tiếp và đối nhân xử thế.",
+        "image_url": "https://images.unsplash.com/photo-1481627834876-b7833e8f5570",
+        "price": Decimal("119000"),
+        "stock": 80,
+    },
+    {
+        "title": "Muôn kiếp nhân sinh",
+        "author": "Nguyên Phong",
+        "category": "sach",
+        "description": "Tác phẩm về nhân sinh quan và hành trình khám phá bản thân.",
+        "image_url": "https://images.unsplash.com/photo-1495446815901-a7297e633e8d",
+        "price": Decimal("168000"),
+        "stock": 75,
+    },
+    {
+        "title": "Lược sử thời gian",
+        "author": "Stephen Hawking",
+        "category": "sach",
+        "description": "Cuốn sách khoa học phổ thông nổi tiếng về vũ trụ học.",
+        "image_url": "https://images.unsplash.com/photo-1519682337058-a94d519337bc",
+        "price": Decimal("149000"),
+        "stock": 64,
+    },
+    {
+        "title": "Tuổi trẻ đáng giá bao nhiêu",
+        "author": "Rosie Nguyễn",
+        "category": "sach",
+        "description": "Tản văn truyền cảm hứng cho người trẻ về học tập và trưởng thành.",
+        "image_url": "https://images.unsplash.com/photo-1516979187457-637abb4f9353",
+        "price": Decimal("109000"),
+        "stock": 70,
     },
 ]
 
 
 class Command(BaseCommand):
-    help = "Seed du lieu san pham mau da nganh."
+    help = "Seed dữ liệu sách mẫu chuẩn tiếng Việt."
 
     def handle(self, *args, **options):
+        valid_titles = {item["title"] for item in PRODUCTS}
+        Book.objects.exclude(title__in=valid_titles).delete()
+
         for payload in PRODUCTS:
             Book.objects.update_or_create(
                 title=payload["title"],
                 defaults=payload,
             )
 
-        self.stdout.write(self.style.SUCCESS(f"Da dong bo {len(PRODUCTS)} san pham mau."))
+        self.stdout.write(self.style.SUCCESS(f"Đã đồng bộ {len(PRODUCTS)} sách mẫu."))

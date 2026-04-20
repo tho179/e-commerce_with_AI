@@ -8,22 +8,22 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         seeds = [
             {
-                'name': 'Noi Chien Khong Dau AirChef 5L',
-                'description': 'Cong nghe doi luu nhiet, tiet kiem dau mo.',
+                'name': 'Nồi chiên không dầu AirChef 5L',
+                'description': 'Công nghệ đối lưu nhiệt, giảm dầu mỡ, dễ vệ sinh sau khi nấu.',
                 'price': '1490000',
                 'stock': 22,
-                'usage_area': 'Nha bep',
+                'usage_area': 'Nhà bếp',
                 'expiry_days': 0,
                 'unit': 'cai',
                 'brand': 'AirChef',
-                'image_url': 'https://images.unsplash.com/photo-1570222094114-d054a817e56b',
+                'image_url': 'https://images.unsplash.com/photo-1585515656240-2f8a6fbbf468',
             },
             {
-                'name': 'Nuoc Lau San FreshHome 3L',
-                'description': 'Mui huong de chiu, sach nhanh bong dep.',
+                'name': 'Nước lau sàn FreshHome 3L',
+                'description': 'Mùi hương dịu nhẹ, làm sạch nhanh và ít bám trơn trượt.',
                 'price': '119000',
                 'stock': 50,
-                'usage_area': 'Phong khach',
+                'usage_area': 'Phòng khách',
                 'expiry_days': 730,
                 'unit': 'chai',
                 'brand': 'FreshHome',
@@ -31,9 +31,12 @@ class Command(BaseCommand):
             },
         ]
 
+        valid_names = {payload['name'] for payload in seeds}
+        HouseholdProduct.objects.exclude(name__in=valid_names).delete()
+
         created = 0
         for payload in seeds:
-            _, was_created = HouseholdProduct.objects.get_or_create(name=payload['name'], defaults=payload)
+            _, was_created = HouseholdProduct.objects.update_or_create(name=payload['name'], defaults=payload)
             if was_created:
                 created += 1
 

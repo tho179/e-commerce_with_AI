@@ -9,7 +9,7 @@ class Command(BaseCommand):
         seeds = [
             {
                 'name': 'Serum Niacinamide 10% GlowLab',
-                'description': 'Ho tro giam tham mun va kiem soat dau cho da hon hop.',
+                'description': 'Hỗ trợ giảm thâm mụn và kiểm soát dầu cho da hỗn hợp.',
                 'price': '289000',
                 'stock': 55,
                 'brand': 'GlowLab',
@@ -19,8 +19,8 @@ class Command(BaseCommand):
                 'image_url': 'https://images.unsplash.com/photo-1571781926291-c477ebfd024b',
             },
             {
-                'name': 'Kem Chong Nang UV Shield SPF50+',
-                'description': 'Ket cau nhe, khong nang mat, phu hop su dung hang ngay.',
+                'name': 'Kem chống nắng UV Shield SPF50+',
+                'description': 'Kết cấu nhẹ, không nâng tông, phù hợp sử dụng hằng ngày.',
                 'price': '349000',
                 'stock': 48,
                 'brand': 'SunDerma',
@@ -30,8 +30,8 @@ class Command(BaseCommand):
                 'image_url': 'https://images.unsplash.com/photo-1556228720-195a672e8a03',
             },
             {
-                'name': 'Sua Rua Mat Amino Fresh Clean',
-                'description': 'Lam sach diu nhe, giu do am tu nhien cho da.',
+                'name': 'Sữa rửa mặt Amino Fresh Clean',
+                'description': 'Làm sạch dịu nhẹ, giữ độ ẩm tự nhiên cho da.',
                 'price': '215000',
                 'stock': 62,
                 'brand': 'DermaFresh',
@@ -42,9 +42,12 @@ class Command(BaseCommand):
             },
         ]
 
+        valid_names = {payload['name'] for payload in seeds}
+        BeautyProduct.objects.exclude(name__in=valid_names).delete()
+
         created = 0
         for payload in seeds:
-            _, was_created = BeautyProduct.objects.get_or_create(name=payload['name'], defaults=payload)
+            _, was_created = BeautyProduct.objects.update_or_create(name=payload['name'], defaults=payload)
             if was_created:
                 created += 1
 

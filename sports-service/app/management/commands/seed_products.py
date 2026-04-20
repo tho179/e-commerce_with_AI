@@ -8,8 +8,8 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         seeds = [
             {
-                'name': 'Yoga Mat FlexPro 6mm',
-                'description': 'Tham tap do bam tot, chong truot, de ve sinh sau khi tap.',
+                'name': 'Thảm tập Yoga FlexPro 6mm',
+                'description': 'Độ bám tốt, chống trượt, dễ vệ sinh sau khi tập.',
                 'price': '450000',
                 'stock': 44,
                 'sport_type': 'yoga',
@@ -20,8 +20,8 @@ class Command(BaseCommand):
                 'image_url': 'https://images.unsplash.com/photo-1518611012118-696072aa579a',
             },
             {
-                'name': 'Ta don PowerLift 12kg',
-                'description': 'Ta don bo cao su dac, phu hop tap suc manh tai nha.',
+                'name': 'Tạ đơn PowerLift 12kg',
+                'description': 'Tạ bọc cao su đặc, phù hợp tập sức mạnh tại nhà.',
                 'price': '690000',
                 'stock': 26,
                 'sport_type': 'fitness',
@@ -32,8 +32,8 @@ class Command(BaseCommand):
                 'image_url': 'https://images.unsplash.com/photo-1534367610401-9f5ed68180aa',
             },
             {
-                'name': 'Giay Chay Bo AirRun X',
-                'description': 'Dem khi em, trong luong nhe, ho tro chay bo duong dai.',
+                'name': 'Giày chạy bộ AirRun X',
+                'description': 'Đệm khí êm, trọng lượng nhẹ, hỗ trợ chạy bộ quãng dài.',
                 'price': '1250000',
                 'stock': 38,
                 'sport_type': 'running',
@@ -45,9 +45,12 @@ class Command(BaseCommand):
             },
         ]
 
+        valid_names = {payload['name'] for payload in seeds}
+        SportsProduct.objects.exclude(name__in=valid_names).delete()
+
         created = 0
         for payload in seeds:
-            _, was_created = SportsProduct.objects.get_or_create(name=payload['name'], defaults=payload)
+            _, was_created = SportsProduct.objects.update_or_create(name=payload['name'], defaults=payload)
             if was_created:
                 created += 1
 

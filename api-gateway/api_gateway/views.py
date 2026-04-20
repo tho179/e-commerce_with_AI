@@ -1,7 +1,9 @@
 from datetime import datetime
 from decimal import Decimal, InvalidOperation
 from functools import wraps
+import json
 import os
+import unicodedata
 
 from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout
@@ -25,9 +27,11 @@ CART_SERVICE_URL = "http://cart-service:8000"
 CUSTOMER_SERVICE_URL = "http://customer-service:8000"
 CATALOG_SERVICE_URL = "http://catalog-service:8000"
 ORDER_SERVICE_URL = "http://order-service:8000"
-COMMENT_RATE_SERVICE_URL = "http://comment-rate-service:8000"
-RECOMMENDER_AI_SERVICE_URL = "http://recommender-ai-service:8000"
-SEARCH_AI_SERVICE_URL = "http://search-ai-service:8000"
+AI_SERVICE_URL = os.getenv("AI_SERVICE_URL", "http://aiservice:8000")
+COMMENT_RATE_SERVICE_URL = AI_SERVICE_URL
+RECOMMENDER_AI_SERVICE_URL = AI_SERVICE_URL
+SEARCH_AI_SERVICE_URL = AI_SERVICE_URL
+ADVISOR_CHATBOT_SERVICE_URL = AI_SERVICE_URL
 AUTH_SERVICE_URL = os.getenv("AUTH_SERVICE_URL", "http://auth-service:8000")
 REQUEST_TIMEOUT = 5
 SERVICE_SHARED_TOKEN = os.getenv("SERVICE_SHARED_TOKEN", "")
@@ -36,13 +40,31 @@ ROLE_ADMIN = "Admin"
 ROLE_STAFF = "Staff"
 ROLE_CUSTOMER = "Customer"
 CATEGORY_LABELS = {
-    "sach": "Sach",
-    "quan_ao": "Quan ao",
-    "gia_dung": "Do gia dung",
-    "dien_tu": "Thiet bi dien tu",
-    "lam_dep": "Lam dep",
-    "tieu_dung": "Tieu dung",
-    "the_thao": "The thao",
+    "sach": "Sách",
+    "quan_ao": "Quần áo",
+    "gia_dung": "Đồ gia dụng",
+    "dien_tu": "Thiết bị điện tử",
+    "lam_dep": "Làm đẹp",
+    "tieu_dung": "Tiêu dùng",
+    "the_thao": "Thể thao",
+}
+
+CATEGORY_ALIASES = {
+    "sach": "sach",
+    "book": "sach",
+    "books": "sach",
+    "quan_ao": "quan_ao",
+    "fashion": "quan_ao",
+    "gia_dung": "gia_dung",
+    "household": "gia_dung",
+    "dien_tu": "dien_tu",
+    "electronics": "dien_tu",
+    "lam_dep": "lam_dep",
+    "beauty": "lam_dep",
+    "tieu_dung": "tieu_dung",
+    "grocery": "tieu_dung",
+    "the_thao": "the_thao",
+    "sports": "the_thao",
 }
 
 PRODUCT_SOURCES = {
@@ -80,6 +102,19 @@ def _resolve_int(raw_value, fallback=0):
         return fallback
 
 
+def _normalize_text(value):
+    raw = str(value or "").strip().lower()
+    normalized = unicodedata.normalize("NFKD", raw)
+    return normalized.encode("ascii", "ignore").decode("ascii")
+
+
+def _normalize_category_key(raw_value):
+    key = str(raw_value or "").strip().lower()
+    if not key:
+        return None
+    return CATEGORY_ALIASES.get(key)
+
+
 def _encode_product_id(category, local_id):
     local_id = _resolve_int(local_id, 0)
     if local_id <= 0:
@@ -103,7 +138,7 @@ def _decode_product_id(global_id):
     return "sach", value
 
 
-def _normalize_product(raw_product, category):
+def _normalize_product(raw_product, source_category):
     if not isinstance(raw_product, dict):
         return None
 
@@ -111,13 +146,19 @@ def _normalize_product(raw_product, category):
     if local_id <= 0:
         return None
 
+    raw_category = _normalize_category_key(raw_product.get("category"))
+    if raw_category and raw_category != source_category:
+        return None
+
+    category = raw_category or source_category
+
     product = dict(raw_product)
     product["local_id"] = local_id
     product["id"] = _encode_product_id(category, local_id)
     product["category"] = category
-    product["category_label"] = CATEGORY_LABELS.get(category, "Khac")
-    product["title"] = raw_product.get("title") or raw_product.get("name") or f"San pham #{local_id}"
-    product["author"] = raw_product.get("author") or raw_product.get("brand") or "Dang cap nhat"
+    product["category_label"] = CATEGORY_LABELS.get(category, "Khác")
+    product["title"] = raw_product.get("title") or raw_product.get("name") or f"Sản phẩm #{local_id}"
+    product["author"] = raw_product.get("author") or raw_product.get("brand") or "Đang cập nhật"
     if "effective_price" not in product:
         product["effective_price"] = raw_product.get("price")
     return product
@@ -126,7 +167,7 @@ def _normalize_product(raw_product, category):
 def _fetch_products_by_category(category):
     source = PRODUCT_SOURCES.get(category)
     if not source:
-        return [], "Nguon du lieu san pham khong hop le."
+        return [], "Nguồn dữ liệu sản phẩm không hợp lệ."
 
     url = f"{source['base_url']}{source['list_path']}"
     rows, error = _get_list(url)
@@ -149,18 +190,18 @@ def _fetch_product_detail_by_id(product_id):
     category, local_id = _decode_product_id(product_id)
     source = PRODUCT_SOURCES.get(category)
     if local_id <= 0 or not source:
-        return False, None, "San pham khong hop le."
+        return False, None, "Sản phẩm không hợp lệ."
 
     ok, data, error = _service_request(
         "get",
         f"{source['base_url']}{source['detail_path'].format(id=local_id)}",
     )
     if not ok or not isinstance(data, dict):
-        return ok, data, error or "Khong tim thay san pham."
+        return ok, data, error or "Không tìm thấy sản phẩm."
 
     normalized = _normalize_product(data, category)
     if not normalized:
-        return False, None, "Du lieu san pham khong hop le."
+        return False, None, "Dữ liệu sản phẩm không hợp lệ."
     return True, normalized, None
 
 
@@ -172,7 +213,7 @@ def _service_request(method, url, **kwargs):
     try:
         response = requests.request(method, url, timeout=REQUEST_TIMEOUT, headers=headers, **kwargs)
     except requests.RequestException:
-        return False, None, "Khong the ket noi service."
+        return False, None, "Không thể kết nối service."
 
     data = None
     if response.content:
@@ -184,7 +225,7 @@ def _service_request(method, url, **kwargs):
     if not response.ok:
         if isinstance(data, dict) and data.get("error"):
             return False, data, data["error"]
-        return False, data, f"Yeu cau that bai ({response.status_code})."
+        return False, data, f"Yêu cầu thất bại ({response.status_code})."
 
     return True, data, None
 
@@ -217,6 +258,66 @@ def _search_semantic(query, top_k=48):
     if ok and isinstance(data, dict):
         return data, None
     return {}, error
+
+
+def _chatbot_advice(customer_id, query):
+    ok, data, error = _service_request(
+        "post",
+        f"{ADVISOR_CHATBOT_SERVICE_URL}/chat/rag/graph/",
+        json={"customer_id": customer_id, "query": query, "top_k": 5},
+    )
+    if ok and isinstance(data, dict):
+        return data, None
+
+    # Graceful fallback to legacy chat flow if graph RAG endpoint is unavailable.
+    ok, data, legacy_error = _service_request(
+        "post",
+        f"{ADVISOR_CHATBOT_SERVICE_URL}/chat/advice/",
+        json={"customer_id": customer_id, "query": query},
+    )
+    if ok and isinstance(data, dict):
+        return data, None
+
+    return {}, error or legacy_error
+
+
+def _normalize_recommendations(recommendations, products):
+    products_by_id = {
+        _resolve_int(item.get("id"), 0): item
+        for item in products
+        if _resolve_int(item.get("id"), 0) > 0
+    }
+
+    normalized = []
+    for row in recommendations:
+        normalized_id = _resolve_int(row.get("book_id"), 0)
+        if normalized_id <= 0:
+            continue
+
+        if normalized_id < PRODUCT_ID_OFFSETS["sach"]:
+            normalized_id = _encode_product_id("sach", normalized_id)
+
+        product = products_by_id.get(normalized_id)
+        if product:
+            title = product.get("title")
+            category = product.get("category")
+            category_label = product.get("category_label")
+        else:
+            category = _normalize_category_key(row.get("category")) or "sach"
+            category_label = CATEGORY_LABELS.get(category, "Khác")
+            title = row.get("title") or f"Sản phẩm #{normalized_id}"
+
+        normalized.append(
+            {
+                "book_id": normalized_id,
+                "title": title,
+                "category": category,
+                "category_label": category_label,
+                "score": row.get("score", 0),
+            }
+        )
+
+    return normalized
 
 
 def _parse_iso_datetime(raw_value):
@@ -835,9 +936,7 @@ def _collect_service_health():
         ("customer-service", f"{CUSTOMER_SERVICE_URL}/health/"),
         ("catalog-service", f"{CATALOG_SERVICE_URL}/health/"),
         ("order-service", f"{ORDER_SERVICE_URL}/health/"),
-        ("comment-rate-service", f"{COMMENT_RATE_SERVICE_URL}/health/"),
-        ("recommender-ai-service", f"{RECOMMENDER_AI_SERVICE_URL}/health/"),
-        ("search-ai-service", f"{SEARCH_AI_SERVICE_URL}/health/"),
+        ("aiservice", f"{AI_SERVICE_URL}/health/"),
         ("auth-service", f"{AUTH_SERVICE_URL}/health/"),
     ]
     results = [{"name": "api-gateway", "healthy": True, "detail": "ready"}]
@@ -878,8 +977,10 @@ def shop(request):
     customer_id = _current_customer_id(request)
     search_query = (request.GET.get("q") or "").strip().lower()
     selected_category = (request.GET.get("category") or "").strip().lower()
+    normalized_search_query = _normalize_text(search_query)
 
     books, product_warnings = _fetch_all_products()
+    all_products = list(books)
     semantic_error = None
 
     if search_query:
@@ -904,8 +1005,9 @@ def shop(request):
             books = [
                 book
                 for book in books
-                if search_query in (book.get("title") or "").lower()
-                or search_query in (book.get("author") or "").lower()
+                if normalized_search_query in _normalize_text(book.get("title"))
+                or normalized_search_query in _normalize_text(book.get("author"))
+                or normalized_search_query in _normalize_text(book.get("description"))
             ]
 
     if selected_category and selected_category in CATEGORY_LABELS:
@@ -918,7 +1020,7 @@ def shop(request):
     recommended_ids = set()
     recommendations = []
     if recommendation_ok and isinstance(recommendation_data, dict):
-        recommendations = recommendation_data.get("recommendations", [])
+        recommendations = _normalize_recommendations(recommendation_data.get("recommendations", []), all_products)
         for item in recommendations:
             raw_book_id = item.get("book_id")
             normalized_id = _resolve_int(raw_book_id, 0)
@@ -934,10 +1036,14 @@ def shop(request):
     cart_ok, cart_data, cart_error = _service_request("get", f"{CART_SERVICE_URL}/carts/{customer_id}/")
     cart_payload = cart_data if cart_ok and isinstance(cart_data, dict) else {"items": []}
     cart_items = cart_payload.get("items", [])
-    total_quantity, total_price = _enrich_cart_items(cart_items, books)
+    total_quantity, total_price = _enrich_cart_items(cart_items, all_products)
     favorite_ids = _favorite_ids(request)
     for book in books:
         book["category_label"] = CATEGORY_LABELS.get(book.get("category"), "Khac")
+
+    search_triggered = bool(search_query)
+    search_result_preview = books[:8] if search_triggered else []
+    cart_preview_items = cart_items[:6]
 
     context = {
         "customer_id": customer_id,
@@ -953,14 +1059,44 @@ def shop(request):
         "item_count": len(cart_items),
         "total_quantity": total_quantity,
         "total_price": total_price,
+        "search_triggered": search_triggered,
+        "search_result_preview": search_result_preview,
+        "cart_preview_items": cart_preview_items,
         "service_warnings": [
             warning
             for warning in [*product_warnings, recommendation_error, semantic_error, cart_error]
             if warning
         ],
+        "chat_suggestions": [
+            "top sản phẩm bán chạy",
+            "chuỗi hành vi phổ biến của khách hàng",
+            "funnel của sản phẩm P0001",
+        ],
     }
     context.update(_role_context(request.user))
     return render(request, "shop.html", context)
+
+
+@role_required(ROLE_CUSTOMER)
+def chat_advice(request):
+    if request.method != "POST":
+        return JsonResponse({"error": "Phương thức không được hỗ trợ."}, status=405)
+
+    try:
+        payload = json.loads((request.body or b"{}").decode("utf-8"))
+    except (UnicodeDecodeError, ValueError):
+        payload = {}
+
+    query = str(payload.get("query") or "").strip()
+    if len(query) < 2:
+        return JsonResponse({"error": "Vui lòng nhập câu hỏi hợp lệ."}, status=400)
+
+    customer_id = _current_customer_id(request)
+    data, error = _chatbot_advice(customer_id=customer_id, query=query)
+    if error:
+        return JsonResponse({"error": error}, status=503)
+
+    return JsonResponse(data)
 
 
 @role_required(ROLE_CUSTOMER)
@@ -1071,7 +1207,9 @@ def _build_workspace(customer_id):
             order["order_items"] = order.get("items", [])
 
     reviews = reviews_data if reviews_ok and isinstance(reviews_data, list) else []
-    recommendations = recommendation_data.get("recommendations", []) if recommendation_ok and isinstance(recommendation_data, dict) else []
+    recommendations = []
+    if recommendation_ok and isinstance(recommendation_data, dict):
+        recommendations = _normalize_recommendations(recommendation_data.get("recommendations", []), books)
     purchased_ids = purchased_data.get("book_ids", []) if purchased_ok and isinstance(purchased_data, dict) else []
     purchased_set = {_resolve_int(item, 0) for item in purchased_ids}
     reviewable_books = [
@@ -1173,7 +1311,7 @@ def ai_dashboard(request):
                 json={},
             )
             if retrain_ok:
-                messages.success(request, "Da trigger retrain cho recommender-ai-service.")
+                messages.success(request, "Da trigger retrain cho aiservice.")
             else:
                 messages.error(request, retrain_error or "Khong trigger duoc retrain.")
             return redirect("/staff/ai/dashboard/")

@@ -3,6 +3,7 @@ from django.urls import path
 
 from .views import (
     ai_dashboard,
+    chat_advice,
     admin_users,
     add_cart_item,
     book_list,
@@ -41,6 +42,7 @@ urlpatterns = [
     path('auth/register/', register_view),
     path('auth/logout/', logout_view),
     path('shop/', shop),
+    path('chat/advice/', chat_advice),
     path('shop/<int:product_id>/', product_detail),
     path('admin/users/', admin_users),
     path('staff/books/', book_list),

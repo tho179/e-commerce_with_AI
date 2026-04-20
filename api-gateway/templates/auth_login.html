@@ -1,25 +1,25 @@
 {% extends "base.html" %}
-{% block title %}Dang nhap | BookShop{% endblock %}
+{% block title %}Đăng nhập | BookShop{% endblock %}
 
 {% block content %}
 <div style="max-width:420px; margin:28px auto;">
     <div class="card">
-        <div class="card-title">Dang nhap</div>
+        <div class="card-title">Đăng nhập</div>
         <div class="card-body">
             <form method="post" action="/auth/login/">
                 {% csrf_token %}
                 <div class="field">
-                    <label class="lbl">Ten dang nhap</label>
+                    <label class="lbl">Tên đăng nhập</label>
                     <input class="input" name="username" required autofocus>
                 </div>
                 <div class="field">
-                    <label class="lbl">Mat khau</label>
+                    <label class="lbl">Mật khẩu</label>
                     <input class="input" type="password" name="password" required>
                 </div>
-                <button class="btn btn-primary btn-block" type="submit">Dang nhap</button>
+                <button class="btn btn-primary btn-block" type="submit">Đăng nhập</button>
             </form>
             <div class="muted" style="margin-top:12px; font-size:13px;">
-                Chua co tai khoan? <a href="/auth/register/" style="color:var(--primary);">Dang ky ngay</a>
+                Chưa có tài khoản? <a href="/auth/register/" style="color:var(--primary);">Đăng ký ngay</a>
             </div>
         </div>
     </div>

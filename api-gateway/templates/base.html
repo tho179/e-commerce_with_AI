@@ -333,18 +333,18 @@
         <a class="brand" href="/dashboard/">Book<span>Shop</span></a>
         <nav class="nav">
             {% if is_admin or is_staff_role %}
-            <a class="nav-item {% block nav_books %}{% endblock %}" href="/staff/books/">Quan ly San pham</a>
-            <a class="nav-item {% block nav_customers %}{% endblock %}" href="/customers/">Khach hang</a>
-            <a class="nav-item {% block nav_health %}{% endblock %}" href="/staff/health/">Suc khoe he thong</a>
+            <a class="nav-item {% block nav_books %}{% endblock %}" href="/staff/books/">Quản lý sản phẩm</a>
+            <a class="nav-item {% block nav_customers %}{% endblock %}" href="/customers/">Khách hàng</a>
+            <a class="nav-item {% block nav_health %}{% endblock %}" href="/staff/health/">Sức khỏe hệ thống</a>
             <a class="nav-item {% block nav_ai %}{% endblock %}" href="/staff/ai/dashboard/">AI Dashboard</a>
             {% endif %}
             {% if is_admin %}
-            <a class="nav-item {% block nav_admin_users %}{% endblock %}" href="/admin/users/">Phan quyen</a>
+            <a class="nav-item {% block nav_admin_users %}{% endblock %}" href="/admin/users/">Phân quyền</a>
             {% endif %}
             {% if is_admin or is_customer_role %}
-            <a class="nav-item {% block nav_shop %}{% endblock %}" href="/shop/">Mua sam</a>
-            <a class="nav-item {% block nav_favorites %}{% endblock %}" href="/customer/{{ customer_id|default:1 }}/favorites/">Yeu thich</a>
-            <a class="nav-item {% block nav_cart %}{% endblock %}" href="/customer/cart/{{ customer_id|default:1 }}/">Thanh toan</a>
+            <a class="nav-item {% block nav_shop %}{% endblock %}" href="/shop/">Mua sắm</a>
+            <a class="nav-item {% block nav_favorites %}{% endblock %}" href="/customer/{{ customer_id|default:1 }}/favorites/">Yêu thích</a>
+            <a class="nav-item {% block nav_cart %}{% endblock %}" href="/customer/cart/{{ customer_id|default:1 }}/">Thanh toán</a>
             {% endif %}
         </nav>
         <div class="header-right">
@@ -355,11 +355,11 @@
             </div>
             <form method="post" action="/auth/logout/">
                 {% csrf_token %}
-                <button type="submit">Dang xuat</button>
+                <button type="submit">Đăng xuất</button>
             </form>
             {% else %}
-            <a class="nav-item" href="/auth/login/">Dang nhap</a>
-            <a class="nav-item" href="/auth/register/">Dang ky</a>
+            <a class="nav-item" href="/auth/login/">Đăng nhập</a>
+            <a class="nav-item" href="/auth/register/">Đăng ký</a>
             {% endif %}
         </div>
     </div>
@@ -372,11 +372,11 @@
             <div class="cart-success-overlay" id="cart-success-overlay">
                 <div class="cart-success-modal">
                     <div class="cart-success-emoji">🙂</div>
-                    <div style="font-size:18px; font-weight:800; margin-bottom:4px;">Da them vao gio hang</div>
+                    <div style="font-size:18px; font-weight:800; margin-bottom:4px;">Đã thêm vào giỏ hàng</div>
                     <div class="muted" style="margin-bottom:14px;">{{ message }}</div>
                     <div class="flex" style="justify-content:center;">
-                        <a class="btn btn-ghost" href="/shop/">Tiep tuc mua sam</a>
-                        <a class="btn btn-primary" href="/customer/cart/{{ customer_id|default:1 }}/">Vao gio hang</a>
+                        <a class="btn btn-ghost" href="/shop/">Tiếp tục mua sắm</a>
+                        <a class="btn btn-primary" href="/customer/cart/{{ customer_id|default:1 }}/">Vào giỏ hàng</a>
                     </div>
                 </div>
             </div>

@@ -1,5 +1,6 @@
 {% extends "base.html" %}
-{% block title %}Gio hang | BookShop{% endblock %}
+{% load currency_filters %}
+{% block title %}Giỏ hàng | BookShop{% endblock %}
 {% block nav_cart %}active{% endblock %}
 
 {% block content %}
@@ -8,16 +9,16 @@
         {% if customer and customer.name %}
         <div style="font-size:18px; font-weight:600;">{{ customer.name }}</div>
         {% else %}
-        <div style="font-size:18px; font-weight:600;">Khach hang #{{ customer_id }}</div>
+        <div style="font-size:18px; font-weight:600;">Khách hàng #{{ customer_id }}</div>
         {% endif %}
         <div class="muted" style="font-size:13px;">
-            {{ customer.email|default:"" }} - {{ item_count }} san pham - <span class="price">{{ total_price }} VND</span>
+            {{ customer.email|default:"" }} - {{ item_count }} sản phẩm - <span class="price">{{ total_price|vnd }}</span>
         </div>
     </div>
     <div class="flex">
-        <a class="btn btn-ghost btn-sm" href="/shop/">Tiep tuc mua sam</a>
+        <a class="btn btn-ghost btn-sm" href="/shop/">Tiếp tục mua sắm</a>
         {% if is_admin or is_staff_role %}
-        <a class="btn btn-ghost btn-sm" href="/customers/">Danh sach khach hang</a>
+        <a class="btn btn-ghost btn-sm" href="/customers/">Danh sách khách hàng</a>
         {% endif %}
     </div>
 </div>
@@ -26,8 +27,8 @@
     <div>
         <div class="card" style="margin-bottom:12px;">
             <div class="card-title" style="display:flex; justify-content:space-between; align-items:center;">
-                <span>Gio hang</span>
-                <span class="tag">{{ item_count }} san pham</span>
+                <span>Giỏ hàng</span>
+                <span class="tag">{{ item_count }} sản phẩm</span>
             </div>
 
             <div class="card-body" style="padding-bottom:0;">
@@ -36,11 +37,11 @@
                     <input type="hidden" name="cart_id" value="{{ cart_id|default:'' }}">
                     <div class="form-row" style="align-items:flex-end;">
                         <div class="field" style="margin-bottom:0;">
-                            <label class="lbl">Chon san pham</label>
+                            <label class="lbl">Chọn sản phẩm</label>
                             <select class="select" name="book_id" required>
-                                <option value="">-- Chon san pham --</option>
+                                <option value="">-- Chọn sản phẩm --</option>
                                 {% for book in books %}
-                                <option value="{{ book.id }}">{{ book.title }} - {{ book.effective_price }} VNĐ</option>
+                                <option value="{{ book.id }}">{{ book.title }} - {{ book.effective_price|vnd }}</option>
                                 {% endfor %}
                             </select>
                         </div>
@@ -49,7 +50,7 @@
                                 <label class="lbl">SL</label>
                                 <input class="input" type="number" min="1" name="quantity" value="1" style="padding:8px;">
                             </div>
-                            <button class="btn btn-primary" type="submit" style="white-space:nowrap;">Them vao gio</button>
+                            <button class="btn btn-primary" type="submit" style="white-space:nowrap;">Thêm vào giỏ</button>
                         </div>
                     </div>
                 </form>
@@ -61,68 +62,68 @@
                 <div style="display:flex; align-items:center; gap:12px; padding:14px 20px; border-top:1px solid var(--line);">
                     <div style="flex:1; min-width:0;">
                         <div class="fw-600" style="margin-bottom:2px;">{{ item.book_title }}</div>
-                        <div class="muted" style="font-size:13px;">{{ item.price }} VNĐ</div>
+                        <div class="muted" style="font-size:13px;">{{ item.price|vnd }}</div>
                     </div>
                     <div style="text-align:right; margin-right:12px;">
-                        <div class="price fw-600">{{ item.line_total }} VNĐ</div>
+                        <div class="price fw-600">{{ item.line_total|vnd }}</div>
                         <div class="muted" style="font-size:12px;">x{{ item.quantity }}</div>
                     </div>
                     <form method="post" action="/customer/cart/{{ customer_id }}/items/{{ item.id }}/update/" style="display:flex; gap:6px; align-items:center;">
                         {% csrf_token %}
                         <input class="input" type="number" min="0" name="quantity" value="{{ item.quantity }}" style="width:56px; padding:6px 8px; text-align:center;">
-                        <button class="btn btn-ghost btn-sm" type="submit">Cap nhat</button>
+                        <button class="btn btn-ghost btn-sm" type="submit">Cập nhật</button>
                     </form>
                     <form method="post" action="/customer/cart/{{ customer_id }}/items/{{ item.id }}/delete/">
                         {% csrf_token %}
-                        <button class="btn btn-danger btn-sm" type="submit">Xoa</button>
+                        <button class="btn btn-danger btn-sm" type="submit">Xóa</button>
                     </form>
                 </div>
                 {% endfor %}
                 <div style="padding:12px 20px; text-align:right; border-top:1px solid var(--line); background:#fafafa; border-radius:0 0 4px 4px;">
-                    <span class="muted" style="font-size:13px;">Tong cong: </span>
-                    <span class="price fw-600" style="font-size:16px;">{{ total_price }} VNĐ</span>
+                    <span class="muted" style="font-size:13px;">Tổng cộng: </span>
+                    <span class="price fw-600" style="font-size:16px;">{{ total_price|vnd }}</span>
                 </div>
             </div>
             {% else %}
-            <div class="empty" style="border-top:1px solid var(--line);">Gio hang trong. Them san pham de bat dau.</div>
+            <div class="empty" style="border-top:1px solid var(--line);">Giỏ hàng trống. Thêm sản phẩm để bắt đầu.</div>
             {% endif %}
         </div>
 
         <div class="card" style="margin-bottom:12px;">
             <div class="card-title" style="display:flex; justify-content:space-between; align-items:center;">
-                <span>Don hang</span>
-                <span class="tag">{{ order_count }} don</span>
+                <span>Đơn hàng</span>
+                <span class="tag">{{ order_count }} đơn</span>
             </div>
             {% if orders %}
             {% for order in orders %}
             <div style="padding:14px 20px; border-top:1px solid var(--line);">
                 <div class="flex" style="justify-content:space-between; margin-bottom:6px;">
-                    <span class="fw-600">Don #{{ order.id }}</span>
+                    <span class="fw-600">Đơn #{{ order.id }}</span>
                     <span class="tag">{{ order.status }}</span>
                 </div>
                 <div class="muted" style="font-size:13px;">
-                    {{ order.payment_method|upper }} - {{ order.shipping_method }} - <span class="price">{{ order.total_amount }} VNĐ</span>
+                    {{ order.payment_method|upper }} - {{ order.shipping_method }} - <span class="price">{{ order.total_amount|vnd }}</span>
                 </div>
             </div>
             {% endfor %}
             {% else %}
-            <div class="empty" style="border-top:1px solid var(--line);">Chua co don hang nao.</div>
+            <div class="empty" style="border-top:1px solid var(--line);">Chưa có đơn hàng nào.</div>
             {% endif %}
         </div>
 
         <div class="card">
             <div class="card-title" style="display:flex; justify-content:space-between; align-items:center;">
-                <span>Danh gia</span>
-                <span class="tag">{{ review_count }} danh gia</span>
+                <span>Đánh giá</span>
+                <span class="tag">{{ review_count }} đánh giá</span>
             </div>
             <div class="card-body">
                 <form method="post" action="/customer/cart/{{ customer_id }}/review/">
                     {% csrf_token %}
                     <div class="form-row">
                         <div class="field">
-                            <label class="lbl">San pham</label>
+                            <label class="lbl">Sản phẩm</label>
                             <select class="select" name="book_id" required {% if not reviewable_books %}disabled{% endif %}>
-                                <option value="">-- Chon san pham --</option>
+                                <option value="">-- Chọn sản phẩm --</option>
                                 {% for book in reviewable_books %}
                                 <option value="{{ book.id }}">{{ book.title }}</option>
                                 {% endfor %}
@@ -140,13 +141,13 @@
                         </div>
                     </div>
                     <div class="field">
-                        <label class="lbl">Nhan xet</label>
-                        <textarea class="textarea" name="comment" placeholder="Viet nhan xet..."></textarea>
+                        <label class="lbl">Nhận xét</label>
+                        <textarea class="textarea" name="comment" placeholder="Viết nhận xét..."></textarea>
                     </div>
                     {% if not reviewable_books %}
-                    <div class="msg-warning" style="margin-bottom:12px;">Chi co the danh gia nhung san pham da mua trong don hang da xac nhan.</div>
+                    <div class="msg-warning" style="margin-bottom:12px;">Chỉ có thể đánh giá những sản phẩm đã mua trong đơn hàng đã xác nhận.</div>
                     {% endif %}
-                    <button class="btn btn-primary" type="submit">Gui danh gia</button>
+                    <button class="btn btn-primary" type="submit">Gửi đánh giá</button>
                 </form>
 
                 {% if reviews %}
@@ -154,7 +155,7 @@
                     {% for review in reviews %}
                     <div style="padding:10px 0; border-bottom:1px solid var(--line);">
                         <div class="flex" style="margin-bottom:4px;">
-                            <span class="fw-600">San pham #{{ review.book_id }}</span>
+                            <span class="fw-600">Sản phẩm #{{ review.book_id }}</span>
                             <span class="tag">{{ review.rating }}/5</span>
                         </div>
                         {% if review.sentiment_label %}
@@ -167,7 +168,7 @@
                         </div>
                         {% endif %}
                         {% if review.comment %}<div class="muted" style="font-size:13px; margin-top:4px;">{{ review.comment }}</div>{% endif %}
-                        {% if review.advice %}<div class="muted" style="font-size:12px; margin-top:4px;">Goi y: {{ review.advice }}</div>{% endif %}
+                        {% if review.advice %}<div class="muted" style="font-size:12px; margin-top:4px;">Gợi ý: {{ review.advice }}</div>{% endif %}
                     </div>
                     {% endfor %}
                 </div>
@@ -178,37 +179,37 @@
 
     <div>
         <div class="card" style="margin-bottom:12px;">
-            <div class="card-title">Dat hang</div>
+            <div class="card-title">Đặt hàng</div>
             <div class="card-body">
                 {% if items %}
                 <form method="post" action="/customer/cart/{{ customer_id }}/order/">
                     {% csrf_token %}
                     <div class="field">
-                        <label class="lbl">Phuong thuc thanh toan</label>
+                        <label class="lbl">Phương thức thanh toán</label>
                         <select class="select" name="payment_method">
                             <option value="cod">COD</option>
-                            <option value="banking">Chuyen khoan</option>
+                            <option value="banking">Chuyển khoản</option>
                         </select>
                     </div>
                     <div class="field">
-                        <label class="lbl">Van chuyen</label>
+                        <label class="lbl">Vận chuyển</label>
                         <select class="select" name="shipping_method">
-                            <option value="standard">Tieu chuan</option>
+                            <option value="standard">Tiêu chuẩn</option>
                             <option value="express">Nhanh</option>
                         </select>
                     </div>
                     <div class="field">
-                        <label class="lbl">Dia chi giao hang</label>
+                        <label class="lbl">Địa chỉ giao hàng</label>
                         <textarea class="textarea" name="shipping_address" required>Ha Noi</textarea>
                     </div>
                     <div style="padding:12px; background:#fff3f0; border-radius:4px; margin-bottom:12px;">
-                        <div class="muted" style="font-size:13px; margin-bottom:2px;">Tong thanh toan</div>
-                        <div class="price fw-600" style="font-size:18px;">{{ total_price }} VNĐ</div>
+                        <div class="muted" style="font-size:13px; margin-bottom:2px;">Tổng thanh toán</div>
+                        <div class="price fw-600" style="font-size:18px;">{{ total_price|vnd }}</div>
                     </div>
-                    <button class="btn btn-primary btn-block" type="submit">Dat hang ngay</button>
+                    <button class="btn btn-primary btn-block" type="submit">Đặt hàng ngay</button>
                 </form>
                 {% else %}
-                <div class="empty">Them san pham vao gio hang truoc khi dat hang.</div>
+                <div class="empty">Thêm sản phẩm vào giỏ hàng trước khi đặt hàng.</div>
                 {% endif %}
             </div>
         </div>
@@ -218,7 +219,7 @@
             <div class="card-title">Review Intelligence</div>
             <div class="card-body" style="padding-top:0;">
                 <div style="padding:12px 0; border-bottom:1px solid var(--line);">
-                    <div class="muted" style="font-size:12px;">Tong review</div>
+                    <div class="muted" style="font-size:12px;">Tổng review</div>
                     <div class="fw-600">{{ review_insights.total_reviews }}</div>
                 </div>
                 <div style="padding:12px 0; border-bottom:1px solid var(--line);">
@@ -231,7 +232,7 @@
                 </div>
                 {% if review_insights.recommended_actions %}
                 <div style="padding:12px 0 0;">
-                    <div class="muted" style="font-size:12px; margin-bottom:6px;">Recommended actions</div>
+                    <div class="muted" style="font-size:12px; margin-bottom:6px;">Khuyến nghị hành động</div>
                     {% for action in review_insights.recommended_actions %}
                     <div class="tag" style="display:block; margin-bottom:6px; white-space:normal;">{{ action }}</div>
                     {% endfor %}
@@ -243,12 +244,12 @@
 
         {% if recommendations %}
         <div class="card">
-            <div class="card-title">Goi y cho ban</div>
+            <div class="card-title">Gợi ý cho bạn</div>
             <div class="card-body" style="padding-top:0;">
                 {% for rec in recommendations %}
                 <div style="padding:12px 0; border-bottom:1px solid var(--line);">
                     <div class="fw-600">{{ rec.title }}</div>
-                    <div class="muted" style="font-size:12px;">Diem: {{ rec.score }}</div>
+                    <div class="muted" style="font-size:12px;">Điểm: {{ rec.score|floatformat:3 }} · {{ rec.category_label|default:"Khác" }}</div>
                 </div>
                 {% endfor %}
             </div>

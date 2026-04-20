@@ -8,8 +8,8 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         seeds = [
             {
-                'name': 'Yen mach nguyen hat OatPlus 1kg',
-                'description': 'Yen mach an sang, giau chat xo, hop dung cho che do healthy.',
+                'name': 'Yến mạch nguyên hạt OatPlus 1kg',
+                'description': 'Yến mạch ăn sáng giàu chất xơ, phù hợp chế độ dinh dưỡng lành mạnh.',
                 'price': '129000',
                 'stock': 120,
                 'brand': 'OatPlus',
@@ -20,8 +20,8 @@ class Command(BaseCommand):
                 'image_url': 'https://images.unsplash.com/photo-1515543904379-3d757afe72e2',
             },
             {
-                'name': 'Sua tuoi tiệt trung FarmFresh 1L',
-                'description': 'Sua tuoi bo sung canxi, phu hop cho ca gia dinh.',
+                'name': 'Sữa tươi tiệt trùng FarmFresh 1L',
+                'description': 'Sữa tươi bổ sung canxi, phù hợp cho cả gia đình.',
                 'price': '39000',
                 'stock': 180,
                 'brand': 'FarmFresh',
@@ -32,8 +32,8 @@ class Command(BaseCommand):
                 'image_url': 'https://images.unsplash.com/photo-1550583724-b2692b85b150',
             },
             {
-                'name': 'Nuoc rua chen BioClean 750ml',
-                'description': 'Lam sach nhanh, mui huong diu nhe, an toan cho da tay.',
+                'name': 'Nước rửa chén BioClean 750ml',
+                'description': 'Làm sạch nhanh, mùi hương dịu nhẹ, an toàn cho da tay.',
                 'price': '55000',
                 'stock': 95,
                 'brand': 'BioClean',
@@ -45,9 +45,12 @@ class Command(BaseCommand):
             },
         ]
 
+        valid_names = {payload['name'] for payload in seeds}
+        GroceryProduct.objects.exclude(name__in=valid_names).delete()
+
         created = 0
         for payload in seeds:
-            _, was_created = GroceryProduct.objects.get_or_create(name=payload['name'], defaults=payload)
+            _, was_created = GroceryProduct.objects.update_or_create(name=payload['name'], defaults=payload)
             if was_created:
                 created += 1
 
