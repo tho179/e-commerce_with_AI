@@ -4,7 +4,7 @@
 
 **MÔN HỌC:** Hệ thống thông tin / Thương mại điện tử
 
-**ĐỀ TÀI:** Tích hợp AISERVICE, KB_Graph và Graph-RAG Chat vào hệ e-commerce
+**ĐỀ TÀI:** Tích hợp ai-service, KB_Graph và Graph-RAG Chat vào hệ e-commerce
 
 **BÁO CÁO:** Câu 2a, 2c, 2d
 
@@ -20,9 +20,9 @@
 
 ---
 
-# 2. MÔ TẢ AISERVICE
+# 2. MÔ TẢ ai-service
 
-AISERVICE là service AI trung tâm, đã gom nhất từ các service AI rời rạc trước đây (review intelligence, recommendation, semantic search, chatbot), đồng thời bổ sung Graph-RAG để truy xuất tri thức từ Neo4j.
+ai-service là service AI trung tâm, đã gom nhất từ các service AI rời rạc trước đây (review intelligence, recommendation, semantic search, chatbot), đồng thời bổ sung Graph-RAG để truy xuất tri thức từ Neo4j.
 
 ## 2.1 Mục tiêu
 
@@ -30,7 +30,7 @@ AISERVICE là service AI trung tâm, đã gom nhất từ các service AI rời 
 - Giảm độ phức tạp vận hành (1 service thay vì nhiều AI service tách rời).
 - Tăng khả năng mở rộng chatbot nhờ kết hợp Semantic + Recommendation + KB_Graph.
 
-## 2.2 Thành phần chính trong AISERVICE
+## 2.2 Thành phần chính trong ai-service
 
 - Xử lý review + sentiment: `ReviewListCreate`, `ReviewInsights`, `ReviewModelStatus`.
 - Recommendation: `RecommendationView`.
@@ -45,7 +45,7 @@ AISERVICE là service AI trung tâm, đã gom nhất từ các service AI rời 
 
 | Endpoint | Chức năng |
 |---|---|
-| `/health/` | Health check AISERVICE |
+| `/health/` | Health check ai-service |
 | `/search/semantic/` | Tìm kiếm semantic |
 | `/recommendations/{customer_id}/` | Gợi ý sản phẩm |
 | `/ai/drift/` | Trạng thái drift mô hình |
@@ -287,7 +287,7 @@ for model_name in model_types:
 
 1. User gửi query từ shop page chat panel.
 2. API Gateway gọi `/chat/advice/`.
-3. AISERVICE vào `GraphRAGChatView`.
+3. ai-service vào `GraphRAGChatView`.
 4. `KBGraphRAG.ask` detect intent và query Neo4j.
 5. Hợp nhất kết quả graph với recommendation.
 6. Trả JSON gồm answer, confidence, citations, products, graph_context.
@@ -328,7 +328,7 @@ for model_name in model_types:
 Tài liệu đã hoàn thành đúng theo 6 yêu cầu:
 
 1. Trang bìa
-2. Mô tả AISERVICE
+2. Mô tả ai-service
 3. Copy 20 dòng data
 4. Lời giải thích + code + ảnh cho Câu 2a
 5. KB_Graph có ảnh 20 dòng và ảnh graph phức tạp

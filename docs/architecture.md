@@ -18,20 +18,20 @@ This makes it a strong foundation to evolve into a full e-commerce platform.
 ```mermaid
 flowchart LR
     GATEWAY[api-gateway]
-    AUTH[auth-service]
-    CUS[customer-service]
+    AUTH[user-service]
+    CUS[user-service]
     CART[cart-service]
-    CAT[catalog-service]
-    BOOK[book-service]
-    FASHION[fashion-service]
-    HOUSE[household-service]
-    ELEC[electronics-service]
-    BEAUTY[beauty-service]
-    GROCERY[grocery-service]
-    SPORTS[sports-service]
+    CAT[product-service]
+    BOOK[product-service]
+    FASHION[product-service]
+    HOUSE[product-service]
+    ELEC[product-service]
+    BEAUTY[product-service]
+    GROCERY[product-service]
+    SPORTS[product-service]
     ORD[order-service]
-    PAY[pay-service]
-    SHIP[ship-service]
+    PAY[payment-service]
+    SHIP[shipping-service]
     REVIEW[comment-rate-service\nReview Intelligence]
     REC[recommender-ai-service]
     SEARCH[search-ai-service]
@@ -77,13 +77,13 @@ flowchart LR
 
 ## 3) Bounded Contexts
 
-- Identity and Access: auth-service
-- Customer and Profile: customer-service
-- Product Domain: book/fashion/household/electronics/beauty/grocery/sports + catalog-service
+- Identity and Access: user-service
+- Customer and Profile: user-service
+- Product Domain: book/fashion/household/electronics/beauty/grocery/sports + product-service
 - Cart and Checkout: cart-service + order-service
-- Payment and Fulfillment: pay-service + ship-service
+- Payment and Fulfillment: payment-service + shipping-service
 - Experience Intelligence (AI): comment-rate-service + recommender-ai-service + search-ai-service
-- Ops and Governance: staff-service + manager-service + observability endpoints
+- Ops and Governance: user-service + user-service + observability endpoints
 
 ## 4) AI Integration Strategy In This Repo
 

@@ -1,0 +1,5 @@
+django
+djangorestframework
+PyJWT
+psycopg2-binary
+requests

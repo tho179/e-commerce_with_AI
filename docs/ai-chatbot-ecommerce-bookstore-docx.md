@@ -129,18 +129,18 @@ Hệ thống đang vận hành theo microservices và đã có các thành phầ
 ```mermaid
 flowchart LR
     U[Người dùng Web] --> G[api-gateway]
-    G --> AUTH[auth-service]
+    G --> AUTH[user-service]
     G --> CART[cart-service]
     G --> ORD[order-service]
-    G --> CAT[catalog-service]
+    G --> CAT[product-service]
 
-    CAT --> BOOK[book-service]
-    CAT --> FASHION[fashion-service]
-    CAT --> HOUSE[household-service]
-    CAT --> ELEC[electronics-service]
-    CAT --> BEAUTY[beauty-service]
-    CAT --> GROCERY[grocery-service]
-    CAT --> SPORTS[sports-service]
+    CAT --> BOOK[product-service]
+    CAT --> FASHION[product-service]
+    CAT --> HOUSE[product-service]
+    CAT --> ELEC[product-service]
+    CAT --> BEAUTY[product-service]
+    CAT --> GROCERY[product-service]
+    CAT --> SPORTS[product-service]
 
     G --> SEARCH[search-ai-service]
     G --> REVIEW[comment-rate-service]
@@ -170,22 +170,22 @@ flowchart LR
     end
 
     subgraph CORE["Microservices nghiệp vụ e-commerce"]
-        AUTH[auth-service]
-        CUS[customer-service]
+        AUTH[user-service]
+        CUS[user-service]
         CART[cart-service]
-        CAT[catalog-service]
-        BOOK[book-service]
-        FASHION[fashion-service]
-        HOUSE[household-service]
-        ELEC[electronics-service]
-        BEAUTY[beauty-service]
-        GROCERY[grocery-service]
-        SPORTS[sports-service]
+        CAT[product-service]
+        BOOK[product-service]
+        FASHION[product-service]
+        HOUSE[product-service]
+        ELEC[product-service]
+        BEAUTY[product-service]
+        GROCERY[product-service]
+        SPORTS[product-service]
         ORD[order-service]
-        PAY[pay-service]
-        SHIP[ship-service]
-        STAFFSVC[staff-service]
-        MGR[manager-service]
+        PAY[payment-service]
+        SHIP[shipping-service]
+        STAFFSVC[user-service]
+        MGR[user-service]
     end
 
     subgraph AI["Lớp AI/ML"]
@@ -408,7 +408,7 @@ sequenceDiagram
 - `GET /chat/health`
 
 Kết nối nội bộ:
-- `auth-service` để xác thực.
+- `user-service` để xác thực.
 - `recommender-ai-service` cho cá nhân hóa.
 - `search-ai-service` cho truy xuất bổ sung.
 - `model_behavior-serving` và KB store.

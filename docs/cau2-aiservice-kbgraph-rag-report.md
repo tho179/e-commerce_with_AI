@@ -4,7 +4,7 @@
 
 **MON HOC:** He thong thong tin / Thuong mai dien tu
 
-**DE TAI:** Tich hop AISERVICE, KB_Graph va Graph-RAG Chat vao he e-commerce
+**DE TAI:** Tich hop ai-service, KB_Graph va Graph-RAG Chat vao he e-commerce
 
 **BAO CAO:** Cau 2a, 2c, 2d
 
@@ -20,9 +20,9 @@
 
 ---
 
-# 2. MO TA AISERVICE
+# 2. MO TA ai-service
 
-AISERVICE la service AI trung tam, da gom nhat tu cac service AI roi rac truoc day (review intelligence, recommendation, semantic search, chatbot), va bo sung them Graph-RAG truy xuat tri thuc tu Neo4j.
+ai-service la service AI trung tam, da gom nhat tu cac service AI roi rac truoc day (review intelligence, recommendation, semantic search, chatbot), va bo sung them Graph-RAG truy xuat tri thuc tu Neo4j.
 
 ## 2.1 Muc tieu
 
@@ -30,7 +30,7 @@ AISERVICE la service AI trung tam, da gom nhat tu cac service AI roi rac truoc d
 - Giam do phuc tap van hanh (1 service thay vi nhieu AI service tach roi).
 - Tang kha nang mo rong chatbot nho ket hop Semantic + Recommendation + KB_Graph.
 
-## 2.2 Thanh phan chinh trong AISERVICE
+## 2.2 Thanh phan chinh trong ai-service
 
 - Xu ly review + sentiment: `ReviewListCreate`, `ReviewInsights`, `ReviewModelStatus`.
 - Recommendation: `RecommendationView`.
@@ -45,7 +45,7 @@ AISERVICE la service AI trung tam, da gom nhat tu cac service AI roi rac truoc d
 
 | Endpoint | Chuc nang |
 |---|---|
-| `/health/` | Health check AISERVICE |
+| `/health/` | Health check ai-service |
 | `/search/semantic/` | Tim kiem semantic |
 | `/recommendations/{customer_id}/` | Goi y san pham |
 | `/ai/drift/` | Trang thai drift mo hinh |
@@ -287,7 +287,7 @@ for model_name in model_types:
 
 1. User gui query tu shop page chat panel.
 2. API Gateway goi `/chat/advice/`.
-3. AISERVICE vao `GraphRAGChatView`.
+3. ai-service vao `GraphRAGChatView`.
 4. `KBGraphRAG.ask` detect intent va query Neo4j.
 5. Hop nhat ket qua graph voi recommendation.
 6. Tra JSON gom answer, confidence, citations, products, graph_context.
@@ -310,7 +310,7 @@ for model_name in model_types:
 Tai lieu da hoan thanh dung theo 6 yeu cau:
 
 1. Trang bia
-2. Mo ta AISERVICE
+2. Mo ta ai-service
 3. Copy 20 dong data
 4. Loi giai thich + code + anh cho Cau 2a
 5. KB_Graph co anh 20 dong va anh graph phuc tap

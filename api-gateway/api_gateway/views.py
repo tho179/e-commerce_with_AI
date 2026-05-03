@@ -16,23 +16,23 @@ import requests
 from .rate_limit import is_rate_limited
 from .telemetry import metrics_snapshot, traces_snapshot
 
-BOOK_SERVICE_URL = "http://book-service:8000"
-FASHION_SERVICE_URL = "http://fashion-service:8000"
-HOUSEHOLD_SERVICE_URL = "http://household-service:8000"
-ELECTRONICS_SERVICE_URL = "http://electronics-service:8000"
-BEAUTY_SERVICE_URL = "http://beauty-service:8000"
-GROCERY_SERVICE_URL = "http://grocery-service:8000"
-SPORTS_SERVICE_URL = "http://sports-service:8000"
+BOOK_SERVICE_URL = "http://product-service:8000"
+FASHION_SERVICE_URL = "http://product-service:8000"
+HOUSEHOLD_SERVICE_URL = "http://product-service:8000"
+ELECTRONICS_SERVICE_URL = "http://product-service:8000"
+BEAUTY_SERVICE_URL = "http://product-service:8000"
+GROCERY_SERVICE_URL = "http://product-service:8000"
+SPORTS_SERVICE_URL = "http://product-service:8000"
 CART_SERVICE_URL = "http://cart-service:8000"
-CUSTOMER_SERVICE_URL = "http://customer-service:8000"
-CATALOG_SERVICE_URL = "http://catalog-service:8000"
+CUSTOMER_SERVICE_URL = "http://user-service:8000"
+CATALOG_SERVICE_URL = "http://product-service:8000"
 ORDER_SERVICE_URL = "http://order-service:8000"
-AI_SERVICE_URL = os.getenv("AI_SERVICE_URL", "http://aiservice:8000")
+AI_SERVICE_URL = os.getenv("AI_SERVICE_URL", "http://ai-service:8000")
 COMMENT_RATE_SERVICE_URL = AI_SERVICE_URL
 RECOMMENDER_AI_SERVICE_URL = AI_SERVICE_URL
 SEARCH_AI_SERVICE_URL = AI_SERVICE_URL
 ADVISOR_CHATBOT_SERVICE_URL = AI_SERVICE_URL
-AUTH_SERVICE_URL = os.getenv("AUTH_SERVICE_URL", "http://auth-service:8000")
+AUTH_SERVICE_URL = os.getenv("AUTH_SERVICE_URL", "http://user-service:8000")
 REQUEST_TIMEOUT = 5
 SERVICE_SHARED_TOKEN = os.getenv("SERVICE_SHARED_TOKEN", "")
 AUTH_ADMIN_TOKEN = os.getenv("AUTH_ADMIN_TOKEN", "")
@@ -69,12 +69,36 @@ CATEGORY_ALIASES = {
 
 PRODUCT_SOURCES = {
     "sach": {"base_url": BOOK_SERVICE_URL, "list_path": "/books/", "detail_path": "/books/{id}/"},
-    "quan_ao": {"base_url": FASHION_SERVICE_URL, "list_path": "/products/", "detail_path": "/products/{id}/"},
-    "gia_dung": {"base_url": HOUSEHOLD_SERVICE_URL, "list_path": "/products/", "detail_path": "/products/{id}/"},
-    "dien_tu": {"base_url": ELECTRONICS_SERVICE_URL, "list_path": "/products/", "detail_path": "/products/{id}/"},
-    "lam_dep": {"base_url": BEAUTY_SERVICE_URL, "list_path": "/products/", "detail_path": "/products/{id}/"},
-    "tieu_dung": {"base_url": GROCERY_SERVICE_URL, "list_path": "/products/", "detail_path": "/products/{id}/"},
-    "the_thao": {"base_url": SPORTS_SERVICE_URL, "list_path": "/products/", "detail_path": "/products/{id}/"},
+    "quan_ao": {
+        "base_url": FASHION_SERVICE_URL,
+        "list_path": "/fashion/products/",
+        "detail_path": "/fashion/products/{id}/",
+    },
+    "gia_dung": {
+        "base_url": HOUSEHOLD_SERVICE_URL,
+        "list_path": "/household/products/",
+        "detail_path": "/household/products/{id}/",
+    },
+    "dien_tu": {
+        "base_url": ELECTRONICS_SERVICE_URL,
+        "list_path": "/electronics/products/",
+        "detail_path": "/electronics/products/{id}/",
+    },
+    "lam_dep": {
+        "base_url": BEAUTY_SERVICE_URL,
+        "list_path": "/beauty/products/",
+        "detail_path": "/beauty/products/{id}/",
+    },
+    "tieu_dung": {
+        "base_url": GROCERY_SERVICE_URL,
+        "list_path": "/grocery/products/",
+        "detail_path": "/grocery/products/{id}/",
+    },
+    "the_thao": {
+        "base_url": SPORTS_SERVICE_URL,
+        "list_path": "/sports/products/",
+        "detail_path": "/sports/products/{id}/",
+    },
 }
 
 PRODUCT_ID_OFFSETS = {
@@ -925,19 +949,21 @@ def cart_lookup(request):
 
 def _collect_service_health():
     checks = [
-        ("book-service", f"{BOOK_SERVICE_URL}/health/"),
-        ("fashion-service", f"{FASHION_SERVICE_URL}/health/"),
-        ("household-service", f"{HOUSEHOLD_SERVICE_URL}/health/"),
-        ("electronics-service", f"{ELECTRONICS_SERVICE_URL}/health/"),
-        ("beauty-service", f"{BEAUTY_SERVICE_URL}/health/"),
-        ("grocery-service", f"{GROCERY_SERVICE_URL}/health/"),
-        ("sports-service", f"{SPORTS_SERVICE_URL}/health/"),
+        ("product-service/books", f"{BOOK_SERVICE_URL}/health/books/"),
+        ("product-service/catalog", f"{CATALOG_SERVICE_URL}/health/catalog/"),
+        ("product-service/beauty", f"{BEAUTY_SERVICE_URL}/beauty/health/"),
+        ("product-service/electronics", f"{ELECTRONICS_SERVICE_URL}/electronics/health/"),
+        ("product-service/fashion", f"{FASHION_SERVICE_URL}/fashion/health/"),
+        ("product-service/grocery", f"{GROCERY_SERVICE_URL}/grocery/health/"),
+        ("product-service/household", f"{HOUSEHOLD_SERVICE_URL}/household/health/"),
+        ("product-service/sports", f"{SPORTS_SERVICE_URL}/sports/health/"),
         ("cart-service", f"{CART_SERVICE_URL}/health/"),
-        ("customer-service", f"{CUSTOMER_SERVICE_URL}/health/"),
-        ("catalog-service", f"{CATALOG_SERVICE_URL}/health/"),
+        ("user-service/auth", f"{AUTH_SERVICE_URL}/health/auth/"),
+        ("user-service/customers", f"{CUSTOMER_SERVICE_URL}/health/customers/"),
         ("order-service", f"{ORDER_SERVICE_URL}/health/"),
-        ("aiservice", f"{AI_SERVICE_URL}/health/"),
-        ("auth-service", f"{AUTH_SERVICE_URL}/health/"),
+        ("ai-service", f"{AI_SERVICE_URL}/health/"),
+        ("payment-service", "http://payment-service:8000/health/"),
+        ("shipping-service", "http://shipping-service:8000/health/"),
     ]
     results = [{"name": "api-gateway", "healthy": True, "detail": "ready"}]
 
@@ -1282,7 +1308,7 @@ def admin_users(request):
             headers={"X-Admin-Token": AUTH_ADMIN_TOKEN},
         )
         if not sync_ok:
-            messages.error(request, f"Khong dong bo duoc role voi auth-service: {sync_error}")
+            messages.error(request, f"Khong dong bo duoc role voi user-service: {sync_error}")
             return redirect("/admin/users/")
 
         groups = Group.objects.filter(name__in=[ROLE_ADMIN, ROLE_STAFF, ROLE_CUSTOMER])
@@ -1311,7 +1337,7 @@ def ai_dashboard(request):
                 json={},
             )
             if retrain_ok:
-                messages.success(request, "Da trigger retrain cho aiservice.")
+                messages.success(request, "Da trigger retrain cho ai-service.")
             else:
                 messages.error(request, retrain_error or "Khong trigger duoc retrain.")
             return redirect("/staff/ai/dashboard/")

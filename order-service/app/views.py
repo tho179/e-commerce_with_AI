@@ -9,12 +9,12 @@ from .models import Order, OrderItem
 from .serializers import OrderSerializer
 
 CART_SERVICE_URL = "http://cart-service:8000"
-BOOK_SERVICE_URL = "http://book-service:8000"
-FASHION_SERVICE_URL = "http://fashion-service:8000"
-HOUSEHOLD_SERVICE_URL = "http://household-service:8000"
-ELECTRONICS_SERVICE_URL = "http://electronics-service:8000"
-PAY_SERVICE_URL = "http://pay-service:8000"
-SHIP_SERVICE_URL = "http://ship-service:8000"
+BOOK_SERVICE_URL = "http://product-service:8000"
+FASHION_SERVICE_URL = "http://product-service:8000"
+HOUSEHOLD_SERVICE_URL = "http://product-service:8000"
+ELECTRONICS_SERVICE_URL = "http://product-service:8000"
+PAY_SERVICE_URL = "http://payment-service:8000"
+SHIP_SERVICE_URL = "http://shipping-service:8000"
 SERVICE_SHARED_TOKEN = os.getenv("SERVICE_SHARED_TOKEN", "")
 
 PRODUCT_ID_OFFSETS = {
@@ -26,9 +26,9 @@ PRODUCT_ID_OFFSETS = {
 
 PRODUCT_SOURCES = {
     "sach": {"base_url": BOOK_SERVICE_URL, "list_path": "/books/"},
-    "quan_ao": {"base_url": FASHION_SERVICE_URL, "list_path": "/products/"},
-    "gia_dung": {"base_url": HOUSEHOLD_SERVICE_URL, "list_path": "/products/"},
-    "dien_tu": {"base_url": ELECTRONICS_SERVICE_URL, "list_path": "/products/"},
+    "quan_ao": {"base_url": FASHION_SERVICE_URL, "list_path": "/fashion/products/"},
+    "gia_dung": {"base_url": HOUSEHOLD_SERVICE_URL, "list_path": "/household/products/"},
+    "dien_tu": {"base_url": ELECTRONICS_SERVICE_URL, "list_path": "/electronics/products/"},
 }
 
 

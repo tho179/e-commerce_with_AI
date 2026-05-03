@@ -26,9 +26,9 @@
 
 ## New Category Services
 
-- `beauty-service`: `GET /products/`, `POST /products/`
-- `grocery-service`: `GET /products/`, `POST /products/`
-- `sports-service`: `GET /products/`, `POST /products/`
+- `product-service`: `GET /products/`, `POST /products/`
+- `product-service`: `GET /products/`, `POST /products/`
+- `product-service`: `GET /products/`, `POST /products/`
 
 ## Auth Service (JWT)
 

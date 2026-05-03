@@ -1,4 +1,15 @@
 services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ecommerce
+      POSTGRES_USER: ecommerce
+      POSTGRES_PASSWORD: ecommerce123
+    ports: ["5432:5432"]
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+
   rabbitmq:
     image: rabbitmq:3.13-management
     environment:
@@ -6,115 +17,104 @@ services:
       RABBITMQ_DEFAULT_PASS: bookstore123
     ports: ["5672:5672", "15672:15672"]
 
-  customer-service:
-    build: ./customer-service
+  user-service:
+    build: ./user-service
+    depends_on:
+      - postgres
     environment:
       SERVICE_SHARED_TOKEN: bookstore-internal-token
-    command: sh -c "python manage.py migrate --noinput; python manage.py runserver 0.0.0.0:8000"
-    ports: ["8001:8000"]
+      JWT_SECRET: bookstore-jwt-secret
+      AUTH_ADMIN_TOKEN: bookstore-auth-admin-token
+      AUTH_ADMIN_USERNAME: admin
+      AUTH_ADMIN_EMAIL: admin@bookstore.local
+      AUTH_ADMIN_PASSWORD: Admin@123456
+      POSTGRES_DB: ecommerce
+      POSTGRES_USER: ecommerce
+      POSTGRES_PASSWORD: ecommerce123
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+    command: sh -c "python manage.py migrate --noinput; python manage.py seed_admin; python manage.py runserver 0.0.0.0:8000"
+    ports: ["8012:8000"]
 
-  book-service:
-    build: ./book-service
+  product-service:
+    build: ./product-service
+    depends_on:
+      - postgres
     environment:
       SERVICE_SHARED_TOKEN: bookstore-internal-token
-    command: sh -c "python manage.py migrate --noinput; python manage.py seed_products; python manage.py runserver 0.0.0.0:8000"
+      POSTGRES_DB: ecommerce
+      POSTGRES_USER: ecommerce
+      POSTGRES_PASSWORD: ecommerce123
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+    command: sh -c "python manage.py migrate --noinput; python manage.py seed_all_products; python manage.py runserver 0.0.0.0:8000"
     ports: ["8002:8000"]
-
-  fashion-service:
-    build: ./fashion-service
-    environment:
-      SERVICE_SHARED_TOKEN: bookstore-internal-token
-    command: sh -c "python manage.py migrate --noinput; python manage.py seed_products; python manage.py runserver 0.0.0.0:8000"
-    ports: ["8013:8000"]
-
-  household-service:
-    build: ./household-service
-    environment:
-      SERVICE_SHARED_TOKEN: bookstore-internal-token
-    command: sh -c "python manage.py migrate --noinput; python manage.py seed_products; python manage.py runserver 0.0.0.0:8000"
-    ports: ["8014:8000"]
-
-  electronics-service:
-    build: ./electronics-service
-    environment:
-      SERVICE_SHARED_TOKEN: bookstore-internal-token
-    command: sh -c "python manage.py migrate --noinput; python manage.py seed_products; python manage.py runserver 0.0.0.0:8000"
-    ports: ["8015:8000"]
-
-  beauty-service:
-    build: ./beauty-service
-    environment:
-      SERVICE_SHARED_TOKEN: bookstore-internal-token
-    command: sh -c "python manage.py migrate --noinput; python manage.py seed_products; python manage.py runserver 0.0.0.0:8000"
-    ports: ["8017:8000"]
-
-  grocery-service:
-    build: ./grocery-service
-    environment:
-      SERVICE_SHARED_TOKEN: bookstore-internal-token
-    command: sh -c "python manage.py migrate --noinput; python manage.py seed_products; python manage.py runserver 0.0.0.0:8000"
-    ports: ["8018:8000"]
-
-  sports-service:
-    build: ./sports-service
-    environment:
-      SERVICE_SHARED_TOKEN: bookstore-internal-token
-    command: sh -c "python manage.py migrate --noinput; python manage.py seed_products; python manage.py runserver 0.0.0.0:8000"
-    ports: ["8019:8000"]
 
   cart-service:
     build: ./cart-service
+    depends_on:
+      - postgres
     environment:
       SERVICE_SHARED_TOKEN: bookstore-internal-token
+      POSTGRES_DB: ecommerce
+      POSTGRES_USER: ecommerce
+      POSTGRES_PASSWORD: ecommerce123
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
     command: sh -c "python manage.py migrate --noinput; python manage.py runserver 0.0.0.0:8000"
     ports: ["8003:8000"]
-
-  catalog-service:
-    build: ./catalog-service
-    environment:
-      SERVICE_SHARED_TOKEN: bookstore-internal-token
-    command: sh -c "python manage.py migrate --noinput; python manage.py runserver 0.0.0.0:8000"
-    ports: ["8004:8000"]
 
   order-service:
     build: ./order-service
     depends_on:
-      - book-service
-      - fashion-service
-      - household-service
-      - electronics-service
-      - pay-service
+      - postgres
+      - product-service
+      - payment-service
+      - shipping-service
     environment:
       SERVICE_SHARED_TOKEN: bookstore-internal-token
+      POSTGRES_DB: ecommerce
+      POSTGRES_USER: ecommerce
+      POSTGRES_PASSWORD: ecommerce123
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
     command: sh -c "python manage.py migrate --noinput; python manage.py runserver 0.0.0.0:8000"
     ports: ["8005:8000"]
 
-  ship-service:
-    build: ./ship-service
+  shipping-service:
+    build: ./shipping-service
+    depends_on:
+      - postgres
     environment:
       SERVICE_SHARED_TOKEN: bookstore-internal-token
+      POSTGRES_DB: ecommerce
+      POSTGRES_USER: ecommerce
+      POSTGRES_PASSWORD: ecommerce123
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
     command: sh -c "python manage.py migrate --noinput; python manage.py runserver 0.0.0.0:8000"
     ports: ["8006:8000"]
 
-  pay-service:
-    build: ./pay-service
+  payment-service:
+    build: ./payment-service
+    depends_on:
+      - postgres
     environment:
       SERVICE_SHARED_TOKEN: bookstore-internal-token
+      POSTGRES_DB: ecommerce
+      POSTGRES_USER: ecommerce
+      POSTGRES_PASSWORD: ecommerce123
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
     command: sh -c "python manage.py migrate --noinput; python manage.py runserver 0.0.0.0:8000"
     ports: ["8007:8000"]
 
-  aiservice:
-    build: ./aiservice
+  ai-service:
+    build: ./ai-service
     depends_on:
       - rabbitmq
       - order-service
-      - book-service
-      - fashion-service
-      - household-service
-      - electronics-service
-      - beauty-service
-      - grocery-service
-      - sports-service
+      - product-service
     environment:
       SERVICE_SHARED_TOKEN: bookstore-internal-token
       RABBITMQ_URL: amqp://bookstore:bookstore123@rabbitmq:5672/
@@ -123,66 +123,42 @@ services:
       NEO4J_USER: neo4j
       NEO4J_PASSWORD: neo4j12345
       NEO4J_DATABASE: neo4j
-    command: sh -c "python manage.py migrate --noinput; python manage.py runserver 0.0.0.0:8000"
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000
     ports: ["8021:8000"]
 
-  aiservice-worker:
-    build: ./aiservice
+  ai-service-worker:
+    build: ./ai-service
     depends_on:
-      - aiservice
+      - ai-service
       - rabbitmq
     environment:
       SERVICE_SHARED_TOKEN: bookstore-internal-token
       RABBITMQ_URL: amqp://bookstore:bookstore123@rabbitmq:5672/
       REVIEW_EVENT_QUEUE: review.events
-      AISERVICE_URL: http://aiservice:8000
-    command: sh -c "python manage.py migrate --noinput; python manage.py consume_review_events"
-
-  staff-service:
-    build: ./staff-service
-    environment:
-      SERVICE_SHARED_TOKEN: bookstore-internal-token
-    command: sh -c "python manage.py migrate --noinput; python manage.py runserver 0.0.0.0:8000"
-    ports: ["8010:8000"]
-
-  manager-service:
-    build: ./manager-service
-    environment:
-      SERVICE_SHARED_TOKEN: bookstore-internal-token
-    command: sh -c "python manage.py migrate --noinput; python manage.py runserver 0.0.0.0:8000"
-    ports: ["8011:8000"]
-
-  auth-service:
-    build: ./auth-service
-    environment:
-      JWT_SECRET: bookstore-jwt-secret
-      AUTH_ADMIN_TOKEN: bookstore-auth-admin-token
-      AUTH_ADMIN_USERNAME: admin
-      AUTH_ADMIN_EMAIL: admin@bookstore.local
-      AUTH_ADMIN_PASSWORD: Admin@123456
-    command: sh -c "python manage.py migrate --noinput; python manage.py seed_admin; python manage.py runserver 0.0.0.0:8000"
-    ports: ["8012:8000"]
+      AISERVICE_URL: http://ai-service:8000
+    command: python app/worker.py
 
   api-gateway:
     build: ./api-gateway
     depends_on:
-      - auth-service
-      - customer-service
+      - postgres
+      - user-service
       - cart-service
-      - book-service
-      - fashion-service
-      - household-service
-      - electronics-service
-      - beauty-service
-      - grocery-service
-      - sports-service
-      - catalog-service
+      - product-service
       - order-service
-      - aiservice
+      - ai-service
     environment:
-      AUTH_SERVICE_URL: http://auth-service:8000
+      AUTH_SERVICE_URL: http://user-service:8000
       SERVICE_SHARED_TOKEN: bookstore-internal-token
       AUTH_ADMIN_TOKEN: bookstore-auth-admin-token
-      AI_SERVICE_URL: http://aiservice:8000
+      AI_SERVICE_URL: http://ai-service:8000
+      POSTGRES_DB: ecommerce
+      POSTGRES_USER: ecommerce
+      POSTGRES_PASSWORD: ecommerce123
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
     command: sh -c "python manage.py migrate --noinput; python manage.py runserver 0.0.0.0:8000"
     ports: ["8016:8000"]
+
+volumes:
+  postgres_data: {}
