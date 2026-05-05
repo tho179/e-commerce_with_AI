@@ -2,10 +2,10 @@ services:
   postgres:
     image: postgres:16-alpine
     environment:
-      POSTGRES_DB: ecommerce
-      POSTGRES_USER: ecommerce
-      POSTGRES_PASSWORD: ecommerce123
-    ports: ["5432:5432"]
+      POSTGRES_DB: ecommerce_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: tho17092004
+    ports: ["5433:5432"]
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
@@ -28,9 +28,9 @@ services:
       AUTH_ADMIN_USERNAME: admin
       AUTH_ADMIN_EMAIL: admin@bookstore.local
       AUTH_ADMIN_PASSWORD: Admin@123456
-      POSTGRES_DB: ecommerce
-      POSTGRES_USER: ecommerce
-      POSTGRES_PASSWORD: ecommerce123
+      POSTGRES_DB: ecommerce_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: tho17092004
       POSTGRES_HOST: postgres
       POSTGRES_PORT: 5432
     command: sh -c "python manage.py migrate --noinput; python manage.py seed_admin; python manage.py runserver 0.0.0.0:8000"
@@ -42,9 +42,9 @@ services:
       - postgres
     environment:
       SERVICE_SHARED_TOKEN: bookstore-internal-token
-      POSTGRES_DB: ecommerce
-      POSTGRES_USER: ecommerce
-      POSTGRES_PASSWORD: ecommerce123
+      POSTGRES_DB: ecommerce_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: tho17092004
       POSTGRES_HOST: postgres
       POSTGRES_PORT: 5432
     command: sh -c "python manage.py migrate --noinput; python manage.py seed_all_products; python manage.py runserver 0.0.0.0:8000"
@@ -56,9 +56,9 @@ services:
       - postgres
     environment:
       SERVICE_SHARED_TOKEN: bookstore-internal-token
-      POSTGRES_DB: ecommerce
-      POSTGRES_USER: ecommerce
-      POSTGRES_PASSWORD: ecommerce123
+      POSTGRES_DB: ecommerce_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: tho17092004
       POSTGRES_HOST: postgres
       POSTGRES_PORT: 5432
     command: sh -c "python manage.py migrate --noinput; python manage.py runserver 0.0.0.0:8000"
@@ -73,9 +73,9 @@ services:
       - shipping-service
     environment:
       SERVICE_SHARED_TOKEN: bookstore-internal-token
-      POSTGRES_DB: ecommerce
-      POSTGRES_USER: ecommerce
-      POSTGRES_PASSWORD: ecommerce123
+      POSTGRES_DB: ecommerce_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: tho17092004
       POSTGRES_HOST: postgres
       POSTGRES_PORT: 5432
     command: sh -c "python manage.py migrate --noinput; python manage.py runserver 0.0.0.0:8000"
@@ -87,9 +87,9 @@ services:
       - postgres
     environment:
       SERVICE_SHARED_TOKEN: bookstore-internal-token
-      POSTGRES_DB: ecommerce
-      POSTGRES_USER: ecommerce
-      POSTGRES_PASSWORD: ecommerce123
+      POSTGRES_DB: ecommerce_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: tho17092004
       POSTGRES_HOST: postgres
       POSTGRES_PORT: 5432
     command: sh -c "python manage.py migrate --noinput; python manage.py runserver 0.0.0.0:8000"
@@ -101,9 +101,9 @@ services:
       - postgres
     environment:
       SERVICE_SHARED_TOKEN: bookstore-internal-token
-      POSTGRES_DB: ecommerce
-      POSTGRES_USER: ecommerce
-      POSTGRES_PASSWORD: ecommerce123
+      POSTGRES_DB: ecommerce_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: tho17092004
       POSTGRES_HOST: postgres
       POSTGRES_PORT: 5432
     command: sh -c "python manage.py migrate --noinput; python manage.py runserver 0.0.0.0:8000"
@@ -152,9 +152,9 @@ services:
       SERVICE_SHARED_TOKEN: bookstore-internal-token
       AUTH_ADMIN_TOKEN: bookstore-auth-admin-token
       AI_SERVICE_URL: http://ai-service:8000
-      POSTGRES_DB: ecommerce
-      POSTGRES_USER: ecommerce
-      POSTGRES_PASSWORD: ecommerce123
+      POSTGRES_DB: ecommerce_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: tho17092004
       POSTGRES_HOST: postgres
       POSTGRES_PORT: 5432
     command: sh -c "python manage.py migrate --noinput; python manage.py runserver 0.0.0.0:8000"
