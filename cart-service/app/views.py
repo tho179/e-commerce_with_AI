@@ -25,16 +25,23 @@ class AddCartItem(APIView):
     def post(self, request):
         book_id = request.data.get("book_id")
         cart_id = request.data.get("cart")
+        quantity = request.data.get("quantity", 1)
 
         if not cart_id or not book_id:
             return Response({"error": "cart and book_id are required"}, status=400)
 
         cart_item = CartItem.objects.filter(cart_id=cart_id, book_id=book_id).first()
-        serializer = CartItemSerializer(cart_item, data=request.data) if cart_item else CartItemSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
+        if cart_item:
+            cart_item.quantity += quantity
+            cart_item.save()
+            serializer = CartItemSerializer(cart_item)
             return Response(serializer.data)
-        return Response(serializer.errors, status=400)
+        else:
+            serializer = CartItemSerializer(data=request.data)
+            if serializer.is_valid():
+                serializer.save()
+                return Response(serializer.data)
+            return Response(serializer.errors, status=400)
 
 
 class CartItemDetail(APIView):

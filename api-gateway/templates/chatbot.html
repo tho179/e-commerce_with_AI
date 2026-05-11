@@ -1,0 +1,709 @@
+{% extends "base.html" %}
+{% block title %}AI Chat | NQT Shop{% endblock %}
+{% block nav_ai_chat %}active{% endblock %}
+
+{% block extra_css %}
+<style>
+    .chat-page {
+        display: grid;
+        gap: 16px;
+    }
+
+    .chat-hero {
+        background: linear-gradient(135deg, #0f766e 0%, #145b8d 100%);
+        color: #fff;
+        border-radius: 24px;
+        padding: 22px;
+        box-shadow: 0 18px 40px rgba(12, 74, 110, 0.24);
+    }
+
+    .chat-hero-top {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 16px;
+        flex-wrap: wrap;
+    }
+
+    .chat-hero h1 {
+        margin: 0 0 8px;
+        font-size: clamp(26px, 3vw, 38px);
+        line-height: 1.1;
+    }
+
+    .chat-hero p {
+        margin: 0;
+        max-width: 780px;
+        color: rgba(255, 255, 255, 0.86);
+    }
+
+    .chat-badges {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 14px;
+    }
+
+    .chat-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 12px;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.12);
+        color: #fff;
+        font-size: 13px;
+        font-weight: 700;
+        backdrop-filter: blur(8px);
+    }
+
+    .chat-badge .dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 999px;
+        background: #8bf1c2;
+        box-shadow: 0 0 0 6px rgba(139, 241, 194, 0.16);
+    }
+
+    .chat-layout {
+        display: grid;
+        grid-template-columns: 300px minmax(0, 1fr);
+        gap: 16px;
+        align-items: start;
+    }
+
+    .chat-card,
+    .chat-side-card {
+        background: #fff;
+        border: 1px solid var(--line);
+        border-radius: 24px;
+        box-shadow: var(--shadow-md);
+        overflow: hidden;
+    }
+
+    .chat-side-card {
+        padding: 18px;
+        position: sticky;
+        top: 16px;
+    }
+
+    .side-title {
+        font-size: 16px;
+        font-weight: 900;
+        margin-bottom: 8px;
+    }
+
+    .side-copy {
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.6;
+    }
+
+    .prompt-list {
+        display: grid;
+        gap: 8px;
+        margin-top: 14px;
+    }
+
+    .prompt-btn {
+        display: block;
+        width: 100%;
+        text-align: left;
+        border: 1px solid var(--line);
+        background: #fbfcfd;
+        border-radius: 16px;
+        padding: 11px 12px;
+        font-size: 13px;
+        font-weight: 700;
+        cursor: pointer;
+        transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+    }
+
+    .prompt-btn:hover {
+        transform: translateY(-1px);
+        border-color: rgba(20, 91, 141, 0.24);
+        box-shadow: 0 10px 20px rgba(20, 91, 141, 0.08);
+    }
+
+    .chat-card {
+        display: flex;
+        flex-direction: column;
+        min-height: min(78vh, 760px);
+    }
+
+    .chat-topbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 14px;
+        padding: 16px 18px;
+        background: linear-gradient(180deg, #f8fbff 0%, #ffffff 100%);
+        border-bottom: 1px solid var(--line);
+    }
+
+    .chat-brand {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .chat-avatar {
+        width: 46px;
+        height: 46px;
+        border-radius: 16px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(135deg, #0f766e 0%, #145b8d 100%);
+        color: #fff;
+        font-weight: 900;
+        box-shadow: 0 12px 24px rgba(20, 91, 141, 0.22);
+        flex: 0 0 auto;
+    }
+
+    .chat-title {
+        font-weight: 900;
+        font-size: 16px;
+        line-height: 1.2;
+    }
+
+    .chat-subtitle {
+        color: var(--muted);
+        font-size: 12px;
+        margin-top: 2px;
+    }
+
+    .chat-status {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 12px;
+        border-radius: 999px;
+        background: #eefbf4;
+        color: #13714a;
+        font-size: 12px;
+        font-weight: 800;
+        white-space: nowrap;
+    }
+
+    .chat-status .pulse {
+        width: 8px;
+        height: 8px;
+        border-radius: 999px;
+        background: #18a05a;
+        box-shadow: 0 0 0 8px rgba(24, 160, 90, 0.12);
+    }
+
+    .chat-feed {
+        flex: 1 1 auto;
+        overflow: auto;
+        padding: 18px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        background: radial-gradient(circle at top, rgba(20, 91, 141, 0.04), transparent 50%), #fff;
+    }
+
+    .chat-msg {
+        display: flex;
+    }
+
+    .chat-msg.user {
+        justify-content: flex-end;
+    }
+
+    .chat-bubble {
+        max-width: min(82%, 720px);
+        padding: 12px 14px;
+        border-radius: 18px;
+        background: #f4f1ed;
+        line-height: 1.6;
+        font-size: 14px;
+        box-shadow: 0 8px 18px rgba(16, 24, 40, 0.06);
+        white-space: pre-wrap;
+        word-break: break-word;
+    }
+
+    .chat-msg.user .chat-bubble {
+        background: linear-gradient(135deg, #dbf4ff 0%, #eefbf4 100%);
+    }
+
+    .chat-msg.bot .chat-bubble {
+        border: 1px solid rgba(20, 91, 141, 0.08);
+    }
+
+    .chat-meta {
+        margin-top: 6px;
+        font-size: 11px;
+        color: var(--muted);
+    }
+
+    .typing {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        color: var(--muted);
+        font-size: 12px;
+    }
+
+    .typing span {
+        width: 7px;
+        height: 7px;
+        border-radius: 999px;
+        background: #94a3b8;
+        animation: bounce 1.1s infinite ease-in-out;
+    }
+
+    .typing span:nth-child(2) { animation-delay: 0.15s; }
+    .typing span:nth-child(3) { animation-delay: 0.3s; }
+
+    @keyframes bounce {
+        0%, 80%, 100% { transform: translateY(0); opacity: 0.5; }
+        40% { transform: translateY(-4px); opacity: 1; }
+    }
+
+    .chat-mini-list {
+        display: grid;
+        gap: 6px;
+        margin-top: 4px;
+        padding: 10px 12px;
+        border-radius: 16px;
+        background: rgba(20, 91, 141, 0.04);
+        border: 1px solid rgba(20, 91, 141, 0.08);
+    }
+
+    .chat-mini-row {
+        font-size: 13px;
+        color: #334155;
+        line-height: 1.45;
+    }
+
+    .chat-composer {
+        padding: 14px 18px 18px;
+        border-top: 1px solid var(--line);
+        background: #fff;
+        display: grid;
+        gap: 12px;
+    }
+
+    .composer-row {
+        display: flex;
+        gap: 12px;
+        align-items: flex-end;
+    }
+
+    .composer-row .field {
+        flex: 1 1 auto;
+        margin: 0;
+    }
+
+    .composer-actions {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+
+    .chat-chip-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    .chat-chip {
+        border: 1px solid var(--line);
+        background: #fff;
+        border-radius: 999px;
+        padding: 8px 11px;
+        font-size: 12px;
+        font-weight: 800;
+        cursor: pointer;
+        transition: border-color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    .chat-chip:hover {
+        transform: translateY(-1px);
+        border-color: rgba(20, 91, 141, 0.24);
+        box-shadow: 0 8px 16px rgba(20, 91, 141, 0.06);
+    }
+
+    .chat-note {
+        font-size: 12px;
+        color: var(--muted);
+    }
+
+    @media (max-width: 1024px) {
+        .chat-layout {
+            grid-template-columns: 1fr;
+        }
+
+        .chat-side-card {
+            position: static;
+        }
+    }
+
+    @media (max-width: 640px) {
+        .chat-hero {
+            padding: 18px;
+        }
+
+        .chat-topbar,
+        .chat-composer,
+        .chat-feed {
+            padding-left: 14px;
+            padding-right: 14px;
+        }
+
+        .chat-bubble {
+            max-width: 92%;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="chat-page">
+    <section class="chat-hero">
+        <div class="chat-hero-top">
+            <div>
+                <h1>AI Chat cho BookShop</h1>
+                <p>Hỏi nhanh về sản phẩm, tìm gợi ý mua sắm, hoặc nhờ AI giải thích funnel và xu hướng hành vi. Giao diện này được thiết kế theo kiểu chatbot thông thường: nội dung ở giữa, hộp nhập ở đáy, và chip gợi ý bên cạnh.</p>
+            </div>
+            <div class="chat-badge"><span class="dot"></span> Sẵn sàng trả lời</div>
+        </div>
+        <div class="chat-badges">
+            <div class="chat-badge">Enter để gửi</div>
+            <div class="chat-badge">Shift + Enter xuống dòng</div>
+            <div class="chat-badge">Có gợi ý sản phẩm và nguồn tri thức</div>
+        </div>
+    </section>
+
+    <div class="chat-layout">
+        <aside class="chat-side-card">
+            <div class="side-title">Gợi ý nhanh</div>
+            <div class="side-copy">Bạn có thể hỏi trực tiếp về sản phẩm, xu hướng, khuyến nghị cá nhân hóa hoặc kiểm tra các câu hỏi thường gặp.</div>
+
+            <div class="prompt-list">
+                {% for prompt in chat_suggestions %}
+                <button type="button" class="prompt-btn" data-chat-prompt="{{ prompt }}">{{ prompt }}</button>
+                {% endfor %}
+            </div>
+
+            <div style="margin-top:14px; padding-top:14px; border-top:1px solid var(--line);">
+                <div class="side-title" style="margin-bottom:6px;">Mẹo dùng nhanh</div>
+                <div class="side-copy">
+                    <div>• Hỏi theo nhu cầu: “gợi ý laptop dưới 15 triệu”.</div>
+                    <div>• Hỏi theo ngữ cảnh: “sản phẩm nào phù hợp làm quà?”.</div>
+                    <div>• Hỏi theo dữ liệu: “top sản phẩm bán chạy”.</div>
+                </div>
+            </div>
+        </aside>
+
+        <section class="chat-card">
+            <div class="chat-topbar">
+                <div class="chat-brand">
+                    <div class="chat-avatar">AI</div>
+                    <div>
+                        <div class="chat-title">BookShop AI Concierge</div>
+                        <div class="chat-subtitle">Trợ lý mua sắm, gợi ý sản phẩm và giải thích dữ liệu</div>
+                    </div>
+                </div>
+                <div class="chat-status"><span class="pulse"></span> Online</div>
+            </div>
+
+            <div id="ai-chat-feed" class="chat-feed">
+                <div class="chat-msg bot">
+                    <div class="chat-bubble">
+                        Xin chào, mình là trợ lý mua sắm của BookShop. Bạn có thể hỏi: top sản phẩm bán chạy, gợi ý theo ngân sách, hoặc funnel của một sản phẩm.
+                        <div class="chat-meta">BookShop AI Concierge</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="chat-composer">
+                <div class="chat-chip-row">
+                    {% for prompt in chat_suggestions %}
+                    <button type="button" class="chat-chip" data-chat-prompt="{{ prompt }}">{{ prompt }}</button>
+                    {% endfor %}
+                </div>
+
+                <div class="composer-row">
+                    <div class="field">
+                        <label class="lbl">Câu hỏi của bạn</label>
+                        <textarea id="ai-chat-query" class="textarea" placeholder="Nhập câu hỏi, Enter để gửi, Shift + Enter để xuống dòng" style="min-height:110px;"></textarea>
+                    </div>
+                    <button id="ai-chat-send" class="btn btn-primary" type="button" style="min-width:144px; height:48px;">Tư vấn ngay</button>
+                </div>
+
+                <div class="composer-actions">
+                    <div class="chat-note">Nếu bạn chưa đăng nhập, chatbot vẫn trả lời các câu hỏi chung và gợi ý sản phẩm cơ bản.</div>
+                    <a class="btn btn-ghost btn-sm" href="/shop/">Quay lại mua sắm</a>
+                </div>
+            </div>
+        </section>
+    </div>
+</div>
+
+<script>
+(function () {
+    function getCookie(name) {
+        const cookies = document.cookie ? document.cookie.split(';') : [];
+        for (let i = 0; i < cookies.length; i += 1) {
+            const cookie = cookies[i].trim();
+            if (cookie.startsWith(name + '=')) {
+                return decodeURIComponent(cookie.substring(name.length + 1));
+            }
+        }
+        return '';
+    }
+
+    const feed = document.getElementById('ai-chat-feed');
+    const queryInput = document.getElementById('ai-chat-query');
+    const sendBtn = document.getElementById('ai-chat-send');
+    const chips = document.querySelectorAll('[data-chat-prompt]');
+
+    if (!feed || !queryInput || !sendBtn) {
+        return;
+    }
+
+    let typingNode = null;
+
+    function scrollToBottom() {
+        feed.scrollTop = feed.scrollHeight;
+    }
+
+    function appendMessage(role, text, metaText) {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'chat-msg ' + (role === 'user' ? 'user' : 'bot');
+
+        const bubble = document.createElement('div');
+        bubble.className = 'chat-bubble';
+        bubble.textContent = text;
+
+        if (metaText) {
+            const meta = document.createElement('div');
+            meta.className = 'chat-meta';
+            meta.textContent = metaText;
+            bubble.appendChild(meta);
+        }
+
+        wrapper.appendChild(bubble);
+        feed.appendChild(wrapper);
+        scrollToBottom();
+    }
+
+    function setTyping(active) {
+        if (typingNode) {
+            typingNode.remove();
+            typingNode = null;
+        }
+
+        if (!active) {
+            return;
+        }
+
+        typingNode = document.createElement('div');
+        typingNode.className = 'chat-msg bot';
+        typingNode.innerHTML = '<div class="chat-bubble"><div class="typing"><span></span><span></span><span></span><div style="margin-left:6px;">AI đang suy nghĩ...</div></div></div>';
+        feed.appendChild(typingNode);
+        scrollToBottom();
+    }
+
+    function appendMiniList(title, rows) {
+        if (!rows || !rows.length) {
+            return;
+        }
+
+        const wrap = document.createElement('div');
+        wrap.className = 'chat-mini-list';
+
+        const heading = document.createElement('div');
+        heading.className = 'chat-meta';
+        heading.style.marginTop = '0';
+        heading.style.marginBottom = '2px';
+        heading.textContent = title;
+        wrap.appendChild(heading);
+
+        rows.forEach(function (text) {
+            const row = document.createElement('div');
+            row.className = 'chat-mini-row';
+            row.textContent = '• ' + text;
+            wrap.appendChild(row);
+        });
+
+        feed.appendChild(wrap);
+        scrollToBottom();
+    }
+
+    function appendProducts(products) {
+        if (!products || !products.length) {
+            return;
+        }
+
+        const rows = products.slice(0, 4).map(function (item) {
+            const title = item.title || item.product_id || 'Sản phẩm';
+            const score = Number(item.score || 0).toFixed(3);
+            return title + ' (score: ' + score + ')';
+        });
+
+        appendMiniList('Danh sách sản phẩm', rows);
+    }
+
+    function appendRecommendations(recommendations) {
+        if (!recommendations || !recommendations.length) {
+            return;
+        }
+
+        const rows = recommendations.slice(0, 4).map(function (item) {
+            const title = item.title || ('Sản phẩm #' + (item.book_id || '?'));
+            const score = Number(item.score || 0).toFixed(3);
+            return title + ' (rec: ' + score + ')';
+        });
+
+        appendMiniList('Đề xuất thêm', rows);
+    }
+
+    function appendCitations(citations) {
+        if (!citations || !citations.length) {
+            return;
+        }
+
+        const rows = citations.slice(0, 3).map(function (item) {
+            const source = item.source || 'unknown-source';
+            const rowCount = item.rows ? ' · rows=' + item.rows : '';
+            return source + rowCount;
+        });
+
+        appendMiniList('Nguồn tri thức', rows);
+    }
+
+    function appendGraphContext(graphContext) {
+        if (!graphContext || !graphContext.length) {
+            return;
+        }
+
+        const rows = [];
+        graphContext.slice(0, 2).forEach(function (item) {
+            if (item.product_id && item.purchases !== undefined) {
+                rows.push(item.product_id + ' · purchases=' + item.purchases + ' · checkouts=' + (item.checkouts || 0));
+                return;
+            }
+            if (item.from_action && item.to_action) {
+                rows.push(item.from_action + ' -> ' + item.to_action + ' (' + (item.count || 0) + ')');
+                return;
+            }
+            if (item.date && item.hour !== undefined) {
+                rows.push(item.date + ' ' + String(item.hour).padStart(2, '0') + 'h · events=' + (item.event_count || 0));
+            }
+        });
+
+        if (rows.length) {
+            appendMiniList('KB_Graph context', rows);
+        }
+    }
+
+    function renderAIResponse(data) {
+        const answer = data.answer || 'Mình đã nhận câu hỏi của bạn.';
+        const intent = data.intent || 'unknown';
+        const confidence = Number(data.confidence || 0).toFixed(2);
+        appendMessage('bot', answer, 'intent=' + intent + ' · confidence=' + confidence);
+
+        appendProducts(data.products || []);
+        appendRecommendations(data.recommendations || []);
+        appendCitations(data.citations || []);
+        appendGraphContext(data.graph_context || []);
+
+        if (data.recommended_actions && data.recommended_actions.length) {
+            appendMiniList('Hành động gợi ý', data.recommended_actions.slice(0, 3).map(String));
+        }
+
+        if (data.error) {
+            appendMiniList('Lưu ý hệ thống', [String(data.error)]);
+        }
+    }
+
+    async function parseResponse(response) {
+        const contentType = response.headers.get('content-type') || '';
+        if (contentType.includes('application/json')) {
+            try {
+                return await response.json();
+            } catch (error) {
+                return { error: 'Không thể phân tích phản hồi từ máy chủ.' };
+            }
+        }
+
+        const text = await response.text();
+        return { error: text ? text.slice(0, 220) : 'Phản hồi không hợp lệ từ máy chủ.' };
+    }
+
+    async function askAI(rawQuery) {
+        const query = (rawQuery || '').trim();
+        if (query.length < 2) {
+            appendMessage('bot', 'Vui lòng nhập câu hỏi rõ ràng hơn.');
+            return;
+        }
+
+        sendBtn.disabled = true;
+        sendBtn.textContent = 'Đang tư vấn...';
+        appendMessage('user', query);
+        setTyping(true);
+
+        try {
+            const response = await fetch('/chat/proxy/', {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken'),
+                },
+                body: JSON.stringify({
+                    query: query,
+                    customer_id: '{{ customer_id|default:"0" }}',
+                    session_id: getCookie('sessionid') || 'sess-' + Math.random().toString(36).substring(2, 12),
+                    channel: 'web',
+                    locale: 'vi'
+                }),
+            });
+
+            const data = await parseResponse(response);
+
+            if (!response.ok) {
+                appendMessage('bot', data.error || 'Hệ thống AI tạm thời bận, vui lòng thử lại sau.');
+                return;
+            }
+
+            renderAIResponse(data);
+        } catch (error) {
+            appendMessage('bot', 'Không thể kết nối endpoint chat. Vui lòng thử lại sau.');
+        } finally {
+            setTyping(false);
+            sendBtn.disabled = false;
+            sendBtn.textContent = 'Tư vấn ngay';
+        }
+    }
+
+    sendBtn.addEventListener('click', function () {
+        askAI(queryInput.value);
+    });
+
+    queryInput.addEventListener('keydown', function (event) {
+        if (event.key === 'Enter' && !event.shiftKey) {
+            event.preventDefault();
+            askAI(queryInput.value);
+        }
+    });
+
+    chips.forEach(function (chip) {
+        chip.addEventListener('click', function () {
+            const prompt = chip.getAttribute('data-chat-prompt') || '';
+            queryInput.value = prompt;
+            askAI(prompt);
+            queryInput.focus();
+        });
+    });
+
+    queryInput.focus();
+})();
+</script>
+{% endblock %}

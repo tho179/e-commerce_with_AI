@@ -906,9 +906,15 @@ def graph_rag_chat(payload: GraphRagRequest, db: Session = Depends(get_db)):
 
     if not graph_result.get("ok"):
         semantic_products, search_error = _fetch_semantic_products(query, top_k=5)
-        answer = "KB_Graph chưa sẵn sàng, mình đang fallback sang semantic search để giữ trải nghiệm tư vấn."
-        if search_error:
+        answer = "Mình chưa có dữ liệu KB_Graph phù hợp, nên mình chuyển sang semantic search để vẫn giữ trải nghiệm tư vấn."
+        if semantic_products:
+            answer = "Mình chưa có dữ liệu KB_Graph phù hợp, nhưng mình đã tìm được một số sản phẩm liên quan bên dưới."
+        elif search_error:
             answer = "KB_Graph và semantic search đều đang tạm gián đoạn, bạn vui lòng thử lại sau ít phút."
+
+        graph_error = graph_result.get("error")
+        if graph_error and "chưa có dữ liệu" in str(graph_error).lower():
+            graph_error = None
 
         return {
             "intent": "graph_fallback",
@@ -920,7 +926,7 @@ def graph_rag_chat(payload: GraphRagRequest, db: Session = Depends(get_db)):
             "products": semantic_products,
             "recommendations": recommendations,
             "latency_ms": graph_result.get("latency_ms", 0),
-            "error": graph_result.get("error"),
+            "error": graph_error,
             "suggested_prompts": [
                 "top sản phẩm mua nhiều nhất",
                 "chuỗi hành vi phổ biến của khách hàng",

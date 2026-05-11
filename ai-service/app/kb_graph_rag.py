@@ -273,25 +273,32 @@ class KBGraphRAG:
 
     def ask(self, query, customer_id=None, top_k=5):
         retrieval = self.retrieve(query=query, customer_id=customer_id, top_k=top_k)
-        answer = self._generate_answer(retrieval.get("intent"), retrieval.get("rows") or [])
+        rows = retrieval.get("rows") or []
+        answer = self._generate_answer(retrieval.get("intent"), rows)
+
+        ok = bool(retrieval.get("ok", False)) and bool(rows)
+        error = retrieval.get("error")
+        if retrieval.get("ok", False) and not rows:
+            ok = False
+            error = error or "KB_Graph hiện chưa có dữ liệu phù hợp cho truy vấn này."
 
         citations = [
             {
                 "type": "graph",
                 "source": retrieval.get("source", "neo4j:KB_Graph"),
-                "rows": len(retrieval.get("rows") or []),
+                "rows": len(rows),
             }
         ]
 
-        confidence = 0.75 if retrieval.get("ok") and retrieval.get("rows") else 0.45
+        confidence = 0.75 if ok else 0.45
 
         return {
-            "ok": retrieval.get("ok", False),
+            "ok": ok,
             "intent": retrieval.get("intent"),
             "answer": answer,
             "confidence": confidence,
             "citations": citations,
-            "graph_context": retrieval.get("rows") or [],
+            "graph_context": rows,
             "latency_ms": retrieval.get("latency_ms", 0.0),
-            "error": retrieval.get("error"),
+            "error": error,
         }

@@ -1,99 +1,274 @@
-{% extends "base.html" %}
-{% load currency_filters %}
-{% block title %}Chi tiết sản phẩm | BookShop{% endblock %}
-{% block nav_shop %}active{% endblock %}
+{% extends "base.html" %} {% load currency_filters %} {% block title %}Chi tiết sản phẩm | NQT Shop{% endblock %} {% block extra_css %}
+<style>
+  .detail-grid {
+    display: grid;
+    grid-template-columns: minmax(280px, 0.95fr) minmax(0, 1fr);
+    gap: 18px;
+    align-items: start;
+  }
 
-{% block content %}
-<div class="card" style="margin-bottom:12px;">
-    <div class="card-body">
-        <a class="btn btn-ghost btn-sm" href="/shop/">Quay lại shop</a>
-    </div>
-</div>
+  .review-list {
+    display: grid;
+    gap: 12px;
+    margin-top: 12px;
+                {{ product.description|default:"Đang cập nhật mô tả sản phẩm." }}
+  .review-item {
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    padding: 12px 14px;
+    background: #fff;
+  }
 
-<div class="two-col">
+  .review-head {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 6px;
+  }
+
+  .review-stars {
+    color: #f59e0b;
+    letter-spacing: 1px;
+    font-weight: 900;
+  }
+</style>
+{% endblock %} {% block content %}
+<div class="catalog-stack">
+  <div class="shop-layout">
     <div class="card">
-        <div style="height:360px; background:#f8f1eb; display:flex; align-items:center; justify-content:center; overflow:hidden; border-radius:10px 10px 0 0;">
-            {% if product.image_url %}
-            <img src="{{ product.image_url }}" alt="{{ product.title }}" style="width:100%; height:100%; object-fit:cover;">
-            {% else %}
-            <span class="muted">Không có ảnh sản phẩm</span>
-            {% endif %}
-        </div>
-        <div class="card-body">
-            <div class="tag" style="margin-bottom:8px;">{{ category_label }}</div>
-            <div style="font-size:24px; font-weight:800; line-height:1.3;">{{ product.title }}</div>
-            <div class="muted" style="margin-top:6px;">Thương hiệu: {{ product.author }}</div>
-            <div class="price" style="font-size:28px; margin-top:10px;">{{ product.effective_price|default:product.price|vnd }}</div>
-            {% if product.active_promotion %}
-            <div class="tag" style="margin-top:8px; background:#fff3f0; color:#b33f21;">{{ product.active_promotion.name }} -{{ product.active_promotion.discount_percent }}%</div>
-            {% endif %}
-            <div class="muted" style="margin-top:8px;">Tồn kho: {{ product.stock }}</div>
-            <div style="margin-top:14px; line-height:1.6;">{{ product.description|default:"Đang cập nhật mô tả sản phẩm." }}</div>
-        </div>
-    </div>
-
-    <div>
-        <div class="card" style="margin-bottom:12px;">
-            <div class="card-title">Thao tác nhanh</div>
-            <div class="card-body">
-                <form method="post" action="/customer/cart/{{ customer_id }}/items/add/">
-                    {% csrf_token %}
-                    <input type="hidden" name="cart_id" value="{{ cart_id|default:'' }}">
-                    <input type="hidden" name="book_id" value="{{ product.id }}">
-                    <input type="hidden" name="next" value="{{ request.get_full_path }}">
-                    <div class="field">
-                        <label class="lbl">Số lượng</label>
-                        <input class="input" type="number" min="1" name="quantity" value="1">
-                    </div>
-                    <button class="btn btn-primary btn-block" type="submit" {% if product.stock <= 0 %}disabled{% endif %}>Thêm vào giỏ</button>
-                </form>
-                <form method="post" action="/customer/favorites/{{ product.id }}/toggle/" style="margin-top:10px;">
-                    {% csrf_token %}
-                    <input type="hidden" name="next" value="/shop/{{ product.id }}/">
-                    <button class="btn btn-outline btn-block" type="submit">{% if is_favorite %}Bỏ yêu thích{% else %}Thêm vào yêu thích{% endif %}</button>
-                </form>
-                <a class="btn btn-ghost btn-block mt-12" href="/customer/{{ customer_id }}/favorites/">Danh sách yêu thích ({{ favorite_count }})</a>
+      <div class="card-body">
+        <a
+          href="/shop/"
+          class="btn btn-ghost btn-sm"
+          style="margin-bottom: 14px"
+          >&larr; Quay lại shop</a
+        >
+        <div class="detail-grid">
+          <div>
+            <div
+              style="
+                background: #f8f9fb;
+                border: 1px solid var(--line);
+                border-radius: 22px;
+                padding: 18px;
+                min-height: 420px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                overflow: hidden;
+              "
+            >
+              {% if product.image_url %}
+              <img
+                src="{{ product.image_url }}"
+                alt="{{ product.title }}"
+                style="width: 100%; height: 100%; object-fit: contain"
+              />
+              {% else %}
+              <span class="muted">Không có ảnh sản phẩm</span>
+              {% endif %}
             </div>
-        </div>
+          </div>
 
-        <div class="card">
-            <div class="card-title">Tổng quan giỏ hàng</div>
-            <div class="card-body">
-                <div class="muted">Số dòng sản phẩm</div>
-                <div style="font-size:24px; font-weight:800;">{{ item_count }}</div>
-                <div class="muted" style="margin-top:8px;">Tạm tính</div>
-                <div class="price" style="font-size:20px;">{{ total_price|vnd }}</div>
-                <a class="btn btn-primary btn-block mt-12" href="/customer/cart/{{ customer_id }}/">Thanh toán ngay</a>
-            </div>
-        </div>
-
-        {% if review_insights.total_reviews %}
-        <div class="card" style="margin-top:12px;">
-            <div class="card-title">Review Intelligence</div>
-            <div class="card-body" style="padding-top:0;">
-                <div style="padding:12px 0; border-bottom:1px solid var(--line);">
-                    <div class="muted" style="font-size:12px;">Tổng review</div>
-                    <div class="fw-600">{{ review_insights.total_reviews }}</div>
+          <div class="catalog-stack" style="gap: 14px">
+            <div
+              style="
+                display: flex;
+                gap: 20px;
+                align-items: flex-start;
+                flex-wrap: wrap;
+              "
+            >
+              <div style="flex: 1; min-width: 240px">
+                <div
+                  class="flex"
+                  style="
+                    justify-content: space-between;
+                    gap: 10px;
+                    margin-bottom: 8px;
+                  "
+                >
+                  <span class="tag">{{ category_label }}</span>
+                  <span class="tag">Tồn kho: {{ product.stock }}</span>
                 </div>
-                <div style="padding:12px 0; border-bottom:1px solid var(--line);">
-                    <div class="muted" style="font-size:12px;">Điểm đánh giá trung bình</div>
-                    <div class="fw-600">{{ review_insights.average_rating }}</div>
+                <h1
+                  class="banner-title"
+                  style="
+                    font-size: clamp(24px, 3vw, 34px);
+                    color: #17212b;
+                    margin-bottom: 10px;
+                  "
+                >
+                  {{ product.title }}
+                </h1>
+                <div class="muted" style="font-size: 15px; margin-bottom: 8px">
+                  Thương hiệu: {{ product.author }}
                 </div>
-                <div style="padding:12px 0; border-bottom:1px solid var(--line);">
-                    <div class="muted" style="font-size:12px;">Sentiment trung bình</div>
-                    <div class="fw-600">{{ review_insights.average_sentiment_score }}</div>
+                <div
+                  class="price-main"
+                  style="font-size: 28px; margin-bottom: 6px"
+                >
+                  {{ product.effective_price|default:product.price|vnd }}
                 </div>
-                {% if review_insights.top_aspects %}
-                <div style="padding:12px 0 0;">
-                    <div class="muted" style="font-size:12px; margin-bottom:6px;">Khía cạnh nổi bật</div>
-                    {% for aspect in review_insights.top_aspects %}
-                    <span class="tag" style="margin-right:6px;">{{ aspect.aspect }} ({{ aspect.count }})</span>
-                    {% endfor %}
+                {% if product.active_promotion %}
+                <div
+                  class="tag"
+                  style="
+                    background: #fff3f0;
+                    color: #b33f21;
+                    margin-bottom: 10px;
+                  "
+                >
+                  {{ product.active_promotion.name }} -{{
+                  product.active_promotion.discount_percent }}%
                 </div>
                 {% endif %}
+                <div
+                  style="
+                    margin-top: 18px;
+                    display: flex;
+                    gap: 10px;
+                    flex-wrap: wrap;
+                    align-items: center;
+                  "
+                >
+                  <button
+                    class="icon-action favorite {% if is_favorite %}active{% endif %}"
+                    type="button"
+                    id="favorite-button"
+                    aria-label="Thêm vào yêu thích"
+                    title="Thêm vào yêu thích"
+                  >
+                    <svg viewBox="0 0 24 24">
+                      <path
+                        d="M12 21s-6.7-4.35-9.33-7.45C-.1 10.1 1.1 5.8 5.1 4.5c2.1-.7 4.4-.1 5.9 1.5 1.5-1.6 3.8-2.2 5.9-1.5 4 1.3 5.2 5.6 2.43 9.05C18.7 16.65 12 21 12 21z"
+                      ></path>
+                    </svg>
+                  </button>
+                  <form
+                    method="post"
+                    action="/customer/favorites/{{ product.id }}/toggle/"
+                    id="favorite-form"
+                    style="display: none"
+                  >
+                    {% csrf_token %}
+                    <input
+                      type="hidden"
+                      name="next"
+                      value="/shop/{{ product.id }}/"
+                    />
+                  </form>
+                  <a
+                    class="btn btn-ghost btn-sm"
+                    href="/customer/cart/{{ customer_id }}/#orders"
+                    >Xem đơn hàng để đánh giá</a
+                  >
+                </div>
+              </div>
+
+              <div
+                style="
+                  flex: 0 0 240px;
+                  background: #fbfcfd;
+                  border: 1px solid var(--line);
+                  border-radius: 16px;
+                  padding: 14px;
+                  font-size: 13px;
+                  color: var(--muted);
+                  line-height: 1.6;
+                "
+              >
+                <div
+                  style="font-weight: 800; color: #17212b; margin-bottom: 6px"
+                >
+                  Mô tả sản phẩm
+                </div>
+                <div class="muted" style="white-space: pre-wrap; line-height: 1.7">
+                  {{ product.description|default:"Đang cập nhật mô tả sản phẩm." }}
+                </div>
+              </div>
             </div>
+          </div>
         </div>
-        {% endif %}
+      </div>
     </div>
+
+    <div class="catalog-stack">
+      <div class="card">
+        <div class="card-title">Đánh giá sản phẩm</div>
+        <div class="card-body" style="padding-top: 12px">
+          <div
+            class="flex"
+            style="justify-content: space-between; margin-bottom: 10px"
+          >
+            <span class="muted">Tổng review</span>
+            <span class="fw-600">{{ review_count }}</span>
+          </div>
+          <div
+            class="flex"
+            style="justify-content: space-between; margin-bottom: 10px"
+          >
+            <span class="muted">Điểm trung bình</span>
+            <span class="fw-600"
+              >{{ review_insights.average_rating|default:0 }}</span
+            >
+          </div>
+          <div
+            class="flex"
+            style="justify-content: space-between; margin-bottom: 10px"
+          >
+            <span class="muted">Sentiment trung bình</span>
+            <span class="fw-600"
+              >{{ review_insights.average_sentiment_score|default:0 }}</span
+            >
+          </div>
+          {% if review_insights.top_aspects %}
+          <div class="chat-chip-row" style="margin-top: 8px">
+            {% for aspect in review_insights.top_aspects %}
+            <span class="tag">{{ aspect.aspect }} ({{ aspect.count }})</span>
+            {% endfor %}
+          </div>
+          {% endif %}
+        </div>
+      </div>
+
+      {% if reviews %}
+      <div class="card">
+        <div class="card-title">Nhận xét gần đây</div>
+        <div class="card-body">
+          <div class="review-list">
+            {% for review in reviews|slice:":5" %}
+            <div class="review-item">
+              <div class="review-head">
+                <div class="fw-600">Khách hàng #{{ review.customer_id }}</div>
+                <div class="review-stars">{{ review.rating }}/5</div>
+              </div>
+              <div class="muted" style="font-size: 13px; margin-bottom: 8px">
+                {{ review.comment|default:"Chưa có nhận xét." }}
+              </div>
+              <div class="muted" style="font-size: 12px">
+                {{ review.sentiment_label|default:"neutral"|title }} · {{
+                review.created_at }}
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+      {% endif %}
+    </div>
+  </div>
 </div>
+<script>
+  (function () {
+    const favoriteButton = document.getElementById("favorite-button");
+    const favoriteForm = document.getElementById("favorite-form");
+    if (favoriteButton && favoriteForm) {
+      favoriteButton.addEventListener("click", function () {
+        favoriteForm.submit();
+      });
+    }
+  })();
+</script>
 {% endblock %}

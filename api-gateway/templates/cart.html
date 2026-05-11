@@ -1,260 +1,507 @@
-{% extends "base.html" %}
-{% load currency_filters %}
-{% block title %}Giỏ hàng | BookShop{% endblock %}
-{% block nav_cart %}active{% endblock %}
+{% extends "base.html" %} {% load currency_filters %} {% block title %}Thanh toán | NQT Shop{% endblock %} {% block extra_css %}
+<style>
+  .cart-summary {
+    border: 1px solid rgba(245, 139, 66, 0.18);
+    background: linear-gradient(180deg, #fff 0%, #fffdfb 100%);
+  }
 
-{% block content %}
-<div class="flex mt-8" style="margin-bottom:12px; justify-content:space-between; align-items:center;">
-    <div>
-        {% if customer and customer.name %}
-        <div style="font-size:18px; font-weight:600;">{{ customer.name }}</div>
-        {% else %}
-        <div style="font-size:18px; font-weight:600;">Khách hàng #{{ customer_id }}</div>
-        {% endif %}
-        <div class="muted" style="font-size:13px;">
-            {{ customer.email|default:"" }} - {{ item_count }} sản phẩm - <span class="price">{{ total_price|vnd }}</span>
-        </div>
+  .cart-summary .value {
+    color: #ea580c;
+  }
+
+  .cart-list {
+    display: grid;
+    gap: 12px;
+  }
+
+  .cart-item {
+    display: grid;
+    grid-template-columns: 88px minmax(0, 1fr) auto;
+    gap: 14px;
+    align-items: center;
+    padding: 14px;
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    background: #fff;
+  }
+
+  .cart-item img {
+    width: 88px;
+    height: 88px;
+    border-radius: 14px;
+    object-fit: cover;
+    background: #f8f9fb;
+  }
+
+  .cart-item-title {
+    font-weight: 900;
+    color: #22303c;
+    margin-bottom: 6px;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .cart-item-meta {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    align-items: center;
+    margin-top: 8px;
+  }
+
+  .cart-item-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    align-items: flex-end;
+    min-width: 180px;
+  }
+
+  .cart-qty {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 6px 8px;
+  }
+
+  .checkout-card,
+  .order-card,
+  .review-card {
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 22px;
+    box-shadow: var(--shadow-md);
+    overflow: hidden;
+  }
+
+  .checkout-head,
+  .order-head,
+  .review-head {
+    padding: 16px 18px;
+    border-bottom: 1px solid var(--line);
+    font-weight: 900;
+  }
+
+  .checkout-head {
+    background: linear-gradient(135deg, #fff5ed 0%, #fff 100%);
+    color: #7a3513;
+  }
+
+  .order-head {
+    background: linear-gradient(135deg, #eefaf8 0%, #fff 100%);
+    color: #115e59;
+  }
+
+  .review-head {
+    background: linear-gradient(135deg, #f3f0ff 0%, #fff 100%);
+    color: #5b3fb8;
+  }
+
+  .card-body-pad {
+    padding: 16px 18px 18px;
+  }
+
+  .order-list {
+    display: grid;
+    gap: 12px;
+  }
+
+  .order-item {
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    padding: 12px;
+    background: #fff;
+    display: grid;
+    gap: 10px;
+  }
+
+  .order-preview {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .order-preview img {
+    width: 48px;
+    height: 48px;
+    border-radius: 10px;
+    object-fit: cover;
+    border: 1px solid var(--line);
+    background: #f8f9fb;
+  }
+
+  .review-target {
+    border: 1px dashed var(--line);
+    border-radius: 16px;
+    padding: 12px 14px;
+    background: #fcfcff;
+    margin-bottom: 14px;
+  }
+
+  @media (max-width: 960px) {
+    .cart-item {
+      grid-template-columns: 72px minmax(0, 1fr);
+    }
+
+    .cart-item-actions {
+      grid-column: 1 / -1;
+      align-items: flex-start;
+      min-width: 0;
+    }
+  }
+</style>
+{% endblock %} {% block content %}
+<div class="catalog-stack">
+  <div class="summary-row">
+    <div class="summary-card cart-summary">
+      <div class="label">Khách hàng</div>
+      <div class="value">
+        {% if customer and customer.name %}{{ customer.name }}{% else %}#{{
+        customer_id }}{% endif %}
+      </div>
     </div>
-    <div class="flex">
+    <div class="summary-card cart-summary">
+      <div class="label">Số sản phẩm</div>
+      <div class="value">{{ item_count }}</div>
+    </div>
+    <div class="summary-card cart-summary">
+      <div class="label">Tạm tính</div>
+      <div class="value">{{ total_price|vnd }}</div>
+    </div>
+  </div>
+
+  <div class="shop-layout">
+    <div class="card">
+      <div
+        class="card-title"
+        style="
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          gap: 10px;
+          flex-wrap: wrap;
+        "
+      >
+        <span>Giỏ hàng hiện tại</span>
         <a class="btn btn-ghost btn-sm" href="/shop/">Tiếp tục mua sắm</a>
-        {% if is_admin or is_staff_role %}
-        <a class="btn btn-ghost btn-sm" href="/customers/">Danh sách khách hàng</a>
-        {% endif %}
-    </div>
-</div>
-
-<div class="page-grid">
-    <div>
-        <div class="card" style="margin-bottom:12px;">
-            <div class="card-title" style="display:flex; justify-content:space-between; align-items:center;">
-                <span>Giỏ hàng</span>
-                <span class="tag">{{ item_count }} sản phẩm</span>
+      </div>
+      <div class="card-body">
+        {% if items %}
+        <div class="cart-list">
+          {% for item in items %}
+          <div class="cart-item">
+            <div>
+              {% if item.image_url %}
+              <img src="{{ item.image_url }}" alt="{{ item.book_title }}" />
+              {% else %}
+              <div
+                style="
+                  width: 88px;
+                  height: 88px;
+                  border-radius: 14px;
+                  background: #f8f9fb;
+                  display: flex;
+                  align-items: center;
+                  justify-content: center;
+                "
+                class="tag"
+              >
+                Không ảnh
+              </div>
+              {% endif %}
             </div>
 
-            <div class="card-body" style="padding-bottom:0;">
-                <form method="post" action="/customer/cart/{{ customer_id }}/items/add/">
-                    {% csrf_token %}
-                    <input type="hidden" name="cart_id" value="{{ cart_id|default:'' }}">
-                    <div class="form-row" style="align-items:flex-end;">
-                        <div class="field" style="margin-bottom:0;">
-                            <label class="lbl">Chọn sản phẩm</label>
-                            <select class="select" name="book_id" required>
-                                <option value="">-- Chọn sản phẩm --</option>
-                                {% for book in books %}
-                                <option value="{{ book.id }}">{{ book.title }} - {{ book.effective_price|vnd }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                        <div style="display:flex; gap:8px; align-items:flex-end;">
-                            <div class="field" style="margin-bottom:0; width:80px;">
-                                <label class="lbl">SL</label>
-                                <input class="input" type="number" min="1" name="quantity" value="1" style="padding:8px;">
-                            </div>
-                            <button class="btn btn-primary" type="submit" style="white-space:nowrap;">Thêm vào giỏ</button>
-                        </div>
-                    </div>
-                </form>
+            <div>
+              <div class="cart-item-title">{{ item.book_title }}</div>
+              <div class="muted" style="font-size: 13px">
+                Đơn giá: {{ item.price|vnd }}
+              </div>
+              <div class="cart-item-meta">
+                <span class="tag">Số lượng: {{ item.quantity }}</span>
+                <span class="tag"
+                  >Thành tiền:
+                  <span class="cart-price"
+                    >{{ item.line_total|vnd }}</span
+                  ></span
+                >
+              </div>
             </div>
 
-            {% if items %}
-            <div style="margin-top:4px;">
-                {% for item in items %}
-                <div style="display:flex; align-items:center; gap:12px; padding:14px 20px; border-top:1px solid var(--line);">
-                    <div style="flex:1; min-width:0;">
-                        <div class="fw-600" style="margin-bottom:2px;">{{ item.book_title }}</div>
-                        <div class="muted" style="font-size:13px;">{{ item.price|vnd }}</div>
-                    </div>
-                    <div style="text-align:right; margin-right:12px;">
-                        <div class="price fw-600">{{ item.line_total|vnd }}</div>
-                        <div class="muted" style="font-size:12px;">x{{ item.quantity }}</div>
-                    </div>
-                    <form method="post" action="/customer/cart/{{ customer_id }}/items/{{ item.id }}/update/" style="display:flex; gap:6px; align-items:center;">
-                        {% csrf_token %}
-                        <input class="input" type="number" min="0" name="quantity" value="{{ item.quantity }}" style="width:56px; padding:6px 8px; text-align:center;">
-                        <button class="btn btn-ghost btn-sm" type="submit">Cập nhật</button>
-                    </form>
-                    <form method="post" action="/customer/cart/{{ customer_id }}/items/{{ item.id }}/delete/">
-                        {% csrf_token %}
-                        <button class="btn btn-danger btn-sm" type="submit">Xóa</button>
-                    </form>
+            <div class="cart-item-actions">
+              <form
+                method="post"
+                action="/customer/cart/{{ customer_id }}/items/{{ item.id }}/update/"
+                style="width: 100%"
+              >
+                {% csrf_token %}
+                <div class="cart-qty">
+                  <input
+                    class="input"
+                    type="number"
+                    min="0"
+                    name="quantity"
+                    value="{{ item.quantity }}"
+                    style="
+                      width: 72px;
+                      padding: 8px 10px;
+                      border: 0;
+                      box-shadow: none;
+                    "
+                  />
+                  <button class="btn btn-ghost btn-sm" type="submit">
+                    Cập nhật
+                  </button>
                 </div>
-                {% endfor %}
-                <div style="padding:12px 20px; text-align:right; border-top:1px solid var(--line); background:#fafafa; border-radius:0 0 4px 4px;">
-                    <span class="muted" style="font-size:13px;">Tổng cộng: </span>
-                    <span class="price fw-600" style="font-size:16px;">{{ total_price|vnd }}</span>
-                </div>
+              </form>
+              <form
+                method="post"
+                action="/customer/cart/{{ customer_id }}/items/{{ item.id }}/delete/"
+              >
+                {% csrf_token %}
+                <button class="btn btn-danger btn-sm" type="submit">Xóa</button>
+              </form>
             </div>
-            {% else %}
-            <div class="empty" style="border-top:1px solid var(--line);">Giỏ hàng trống. Thêm sản phẩm để bắt đầu.</div>
-            {% endif %}
+          </div>
+          {% endfor %}
         </div>
+        {% else %}
+        <div class="empty">Giỏ hàng trống. Thêm sản phẩm để bắt đầu.</div>
+        {% endif %}
+      </div>
+    </div>
 
-        <div class="card" style="margin-bottom:12px;">
-            <div class="card-title" style="display:flex; justify-content:space-between; align-items:center;">
-                <span>Đơn hàng</span>
-                <span class="tag">{{ order_count }} đơn</span>
-            </div>
-            {% if orders %}
+    <div class="catalog-stack">
+      <div class="checkout-card">
+        <div class="checkout-head">Thanh toán</div>
+        <div class="card-body-pad">
+          <div
+            class="flex"
+            style="justify-content: space-between; margin-bottom: 10px"
+          >
+            <span class="muted">Tạm tính</span>
+            <span class="fw-600 cart-price">{{ total_price|vnd }}</span>
+          </div>
+          <div
+            class="flex"
+            style="justify-content: space-between; margin-bottom: 10px"
+          >
+            <span class="muted">Phí vận chuyển</span>
+            <span>{{ shipping_fee|default:0|vnd }}</span>
+          </div>
+          <div
+            class="flex"
+            style="justify-content: space-between; margin-bottom: 10px"
+          >
+            <span class="muted">Thuế</span>
+            <span>{{ tax|default:0|vnd }}</span>
+          </div>
+          <div
+            style="height: 1px; background: var(--line); margin: 14px 0"
+          ></div>
+          <div
+            class="flex"
+            style="justify-content: space-between; margin-bottom: 14px"
+          >
+            <span class="fw-600">Tổng cộng</span>
+            <span class="price" style="font-size: 20px"
+              >{{ total_with_shipping|default:total_price|vnd }}</span
+            >
+          </div>
+          <form method="post" action="/customer/cart/{{ customer_id }}/order/">
+            {% csrf_token %}
+            <button class="btn btn-primary btn-block" type="submit">
+              Đặt hàng
+            </button>
+          </form>
+        </div>
+      </div>
+
+      <div id="orders" class="order-card">
+        <div class="order-head">Đơn hàng đã mua</div>
+        <div class="card-body-pad">
+          {% if orders %}
+          <div class="order-list">
             {% for order in orders %}
-            <div style="padding:14px 20px; border-top:1px solid var(--line);">
-                <div class="flex" style="justify-content:space-between; margin-bottom:6px;">
-                    <span class="fw-600">Đơn #{{ order.id }}</span>
-                    <span class="tag">{{ order.status }}</span>
+            <div class="order-item">
+              <div
+                class="flex"
+                style="
+                  justify-content: space-between;
+                  gap: 10px;
+                  flex-wrap: wrap;
+                "
+              >
+                <div>
+                  <div class="fw-600">Đơn #{{ order.id }}</div>
+                  <div class="muted" style="font-size: 12px; margin-top: 4px">
+                    {{ order.payment_method|upper }} · {{ order.shipping_method
+                    }}
+                  </div>
                 </div>
-                <div class="muted" style="font-size:13px;">
-                    {{ order.payment_method|upper }} - {{ order.shipping_method }} - <span class="price">{{ order.total_amount|vnd }}</span>
+                <span class="tag">{{ order.status }}</span>
+              </div>
+
+              <div class="order-preview">
+                {% for item in order.display_items|slice:":4" %}
+                {% if item.image_url %}
+                <img
+                  src="{{ item.image_url }}"
+                  alt="{{ item.title }}"
+                  title="{{ item.title }}"
+                />
+                {% else %}
+                <span class="tag">{{ item.title }}</span>
+                {% endif %}
+                {% endfor %}
+              </div>
+
+              <div
+                class="flex"
+                style="
+                  justify-content: space-between;
+                  align-items: center;
+                  gap: 10px;
+                  flex-wrap: wrap;
+                "
+              >
+                <div class="price" style="font-size: 14px">
+                  {{ order.total_amount|vnd }}
                 </div>
+                <a
+                  class="btn btn-ghost btn-sm"
+                  href="?review_order={{ order.id }}#reviews"
+                  >Đánh giá đơn này</a
+                >
+              </div>
             </div>
             {% endfor %}
-            {% else %}
-            <div class="empty" style="border-top:1px solid var(--line);">Chưa có đơn hàng nào.</div>
-            {% endif %}
+          </div>
+          {% else %}
+          <div class="empty">Chưa có đơn hàng nào.</div>
+          {% endif %}
         </div>
+      </div>
 
-        <div class="card">
-            <div class="card-title" style="display:flex; justify-content:space-between; align-items:center;">
-                <span>Đánh giá</span>
-                <span class="tag">{{ review_count }} đánh giá</span>
-            </div>
-            <div class="card-body">
-                <form method="post" action="/customer/cart/{{ customer_id }}/review/">
-                    {% csrf_token %}
-                    <div class="form-row">
-                        <div class="field">
-                            <label class="lbl">Sản phẩm</label>
-                            <select class="select" name="book_id" required {% if not reviewable_books %}disabled{% endif %}>
-                                <option value="">-- Chọn sản phẩm --</option>
-                                {% for book in reviewable_books %}
-                                <option value="{{ book.id }}">{{ book.title }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                        <div class="field">
-                            <label class="lbl">Diem (1-5)</label>
-                            <select class="select" name="rating">
-                                <option value="5">5</option>
-                                <option value="4">4</option>
-                                <option value="3">3</option>
-                                <option value="2">2</option>
-                                <option value="1">1</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="field">
-                        <label class="lbl">Nhận xét</label>
-                        <textarea class="textarea" name="comment" placeholder="Viết nhận xét..."></textarea>
-                    </div>
-                    {% if not reviewable_books %}
-                    <div class="msg-warning" style="margin-bottom:12px;">Chỉ có thể đánh giá những sản phẩm đã mua trong đơn hàng đã xác nhận.</div>
-                    {% endif %}
-                    <button class="btn btn-primary" type="submit">Gửi đánh giá</button>
-                </form>
+      <div id="reviews" class="review-card">
+        <div class="review-head">Đánh giá</div>
+        <div class="card-body-pad">
+          {% if selected_order %}
+          <div class="review-target">
+            Đang đánh giá đơn #{{ selected_order.id }}. Chỉ các sản phẩm đã mua
+            trong đơn này mới được phép đánh giá.
+          </div>
+          {% elif orders %}
+          <div class="review-target">
+            Chọn một đơn hàng ở bên trên để mở phần đánh giá.
+          </div>
+          {% else %}
+          <div class="review-target">
+            Bạn cần có đơn hàng đã mua trước khi đánh giá.
+          </div>
+          {% endif %}
 
-                {% if reviews %}
-                <div style="margin-top:16px; border-top:1px solid var(--line); padding-top:16px;">
-                    {% for review in reviews %}
-                    <div style="padding:10px 0; border-bottom:1px solid var(--line);">
-                        <div class="flex" style="margin-bottom:4px;">
-                            <span class="fw-600">Sản phẩm #{{ review.book_id }}</span>
-                            <span class="tag">{{ review.rating }}/5</span>
-                        </div>
-                        {% if review.sentiment_label %}
-                        <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:6px;">
-                            <span class="tag">Sentiment: {{ review.sentiment_label }}</span>
-                            <span class="tag">AI score: {{ review.sentiment_score }}</span>
-                            {% for aspect in review.aspect_tags %}
-                            <span class="tag">{{ aspect }}</span>
-                            {% endfor %}
-                        </div>
-                        {% endif %}
-                        {% if review.comment %}<div class="muted" style="font-size:13px; margin-top:4px;">{{ review.comment }}</div>{% endif %}
-                        {% if review.advice %}<div class="muted" style="font-size:12px; margin-top:4px;">Gợi ý: {{ review.advice }}</div>{% endif %}
-                    </div>
-                    {% endfor %}
-                </div>
-                {% endif %}
-            </div>
-        </div>
-    </div>
-
-    <div>
-        <div class="card" style="margin-bottom:12px;">
-            <div class="card-title">Đặt hàng</div>
-            <div class="card-body">
-                {% if items %}
-                <form method="post" action="/customer/cart/{{ customer_id }}/order/">
-                    {% csrf_token %}
-                    <div class="field">
-                        <label class="lbl">Phương thức thanh toán</label>
-                        <select class="select" name="payment_method">
-                            <option value="cod">COD</option>
-                            <option value="banking">Chuyển khoản</option>
-                        </select>
-                    </div>
-                    <div class="field">
-                        <label class="lbl">Vận chuyển</label>
-                        <select class="select" name="shipping_method">
-                            <option value="standard">Tiêu chuẩn</option>
-                            <option value="express">Nhanh</option>
-                        </select>
-                    </div>
-                    <div class="field">
-                        <label class="lbl">Địa chỉ giao hàng</label>
-                        <textarea class="textarea" name="shipping_address" required>Ha Noi</textarea>
-                    </div>
-                    <div style="padding:12px; background:#fff3f0; border-radius:4px; margin-bottom:12px;">
-                        <div class="muted" style="font-size:13px; margin-bottom:2px;">Tổng thanh toán</div>
-                        <div class="price fw-600" style="font-size:18px;">{{ total_price|vnd }}</div>
-                    </div>
-                    <button class="btn btn-primary btn-block" type="submit">Đặt hàng ngay</button>
-                </form>
-                {% else %}
-                <div class="empty">Thêm sản phẩm vào giỏ hàng trước khi đặt hàng.</div>
-                {% endif %}
-            </div>
-        </div>
-
-        {% if review_insights.total_reviews %}
-        <div class="card" style="margin-bottom:12px;">
-            <div class="card-title">Review Intelligence</div>
-            <div class="card-body" style="padding-top:0;">
-                <div style="padding:12px 0; border-bottom:1px solid var(--line);">
-                    <div class="muted" style="font-size:12px;">Tổng review</div>
-                    <div class="fw-600">{{ review_insights.total_reviews }}</div>
-                </div>
-                <div style="padding:12px 0; border-bottom:1px solid var(--line);">
-                    <div class="muted" style="font-size:12px;">Average rating</div>
-                    <div class="fw-600">{{ review_insights.average_rating }}</div>
-                </div>
-                <div style="padding:12px 0; border-bottom:1px solid var(--line);">
-                    <div class="muted" style="font-size:12px;">Average sentiment</div>
-                    <div class="fw-600">{{ review_insights.average_sentiment_score }}</div>
-                </div>
-                {% if review_insights.recommended_actions %}
-                <div style="padding:12px 0 0;">
-                    <div class="muted" style="font-size:12px; margin-bottom:6px;">Khuyến nghị hành động</div>
-                    {% for action in review_insights.recommended_actions %}
-                    <div class="tag" style="display:block; margin-bottom:6px; white-space:normal;">{{ action }}</div>
-                    {% endfor %}
-                </div>
-                {% endif %}
-            </div>
-        </div>
-        {% endif %}
-
-        {% if recommendations %}
-        <div class="card">
-            <div class="card-title">Gợi ý cho bạn</div>
-            <div class="card-body" style="padding-top:0;">
-                {% for rec in recommendations %}
-                <div style="padding:12px 0; border-bottom:1px solid var(--line);">
-                    <div class="fw-600">{{ rec.title }}</div>
-                    <div class="muted" style="font-size:12px;">Điểm: {{ rec.score|floatformat:3 }} · {{ rec.category_label|default:"Khác" }}</div>
-                </div>
+          <form method="post" action="/customer/cart/{{ customer_id }}/review/">
+            {% csrf_token %}
+            <input
+              type="hidden"
+              name="order_id"
+              value="{{ selected_order.id|default:'' }}"
+            />
+            <div class="field">
+              <label class="lbl">Sản phẩm</label>
+              <select
+                class="select"
+                name="book_id"
+                required
+                {%
+                if
+                not
+                reviewable_books
+                %}disabled{%
+                endif
+                %}
+              >
+                <option value="">-- Chọn sản phẩm đã mua --</option>
+                {% for book in reviewable_books %}
+                <option value="{{ book.id }}">{{ book.title }}</option>
                 {% endfor %}
+              </select>
             </div>
+            <div class="field">
+              <label class="lbl">Điểm (1-5)</label>
+              <select class="select" name="rating">
+                <option value="5">5</option>
+                <option value="4">4</option>
+                <option value="3">3</option>
+                <option value="2">2</option>
+                <option value="1">1</option>
+              </select>
+            </div>
+            <div class="field">
+              <label class="lbl">Nhận xét</label>
+              <textarea
+                class="textarea"
+                name="comment"
+                placeholder="Viết nhận xét..."
+              ></textarea>
+            </div>
+            {% if not reviewable_books %}
+            <div class="msg-warning" style="margin-bottom: 12px">
+              Chỉ có thể đánh giá những sản phẩm đã mua trong đơn hàng đã chọn.
+            </div>
+            {% endif %}
+            <button class="btn btn-primary btn-block" type="submit">
+              Gửi đánh giá
+            </button>
+          </form>
         </div>
-        {% endif %}
+      </div>
+
+      {% if review_insights.total_reviews %}
+      <div class="review-card">
+        <div class="review-head">Review Intelligence</div>
+        <div class="card-body-pad">
+          <div
+            class="flex"
+            style="justify-content: space-between; margin-bottom: 10px"
+          >
+            <span class="muted">Tổng review</span>
+            <span class="fw-600">{{ review_insights.total_reviews }}</span>
+          </div>
+          <div
+            class="flex"
+            style="justify-content: space-between; margin-bottom: 10px"
+          >
+            <span class="muted">Average rating</span>
+            <span class="fw-600">{{ review_insights.average_rating }}</span>
+          </div>
+          <div
+            class="flex"
+            style="justify-content: space-between; margin-bottom: 10px"
+          >
+            <span class="muted">Average sentiment</span>
+            <span class="fw-600"
+              >{{ review_insights.average_sentiment_score }}</span
+            >
+          </div>
+          {% if review_insights.recommended_actions %}
+          <div style="display: grid; gap: 8px; margin-top: 10px">
+            {% for action in review_insights.recommended_actions %}
+            <div class="tag" style="display: block; white-space: normal">
+              {{ action }}
+            </div>
+            {% endfor %}
+          </div>
+          {% endif %}
+        </div>
+      </div>
+      {% endif %}
     </div>
+  </div>
 </div>
 {% endblock %}

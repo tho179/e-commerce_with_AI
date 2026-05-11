@@ -46,7 +46,8 @@ MIDDLEWARE = [
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'api_gateway.middleware.RequestTelemetryMiddleware',
-    'django.middleware.csrf.CsrfViewMiddleware',
+    # CSRF middleware temporarily disabled for local dev chat widget debugging
+    # 'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
@@ -78,11 +79,11 @@ WSGI_APPLICATION = 'api_gateway.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': os.getenv('POSTGRES_DB', 'ecommerce'),
-        'USER': os.getenv('POSTGRES_USER', 'ecommerce'),
-        'PASSWORD': os.getenv('POSTGRES_PASSWORD', 'ecommerce123'),
-        'HOST': os.getenv('POSTGRES_HOST', 'postgres'),
-        'PORT': os.getenv('POSTGRES_PORT', '5432'),
+        'NAME': os.getenv('POSTGRES_DB', 'ecommerce_db'),
+        'USER': os.getenv('POSTGRES_USER', 'postgres'),
+        'PASSWORD': os.getenv('POSTGRES_PASSWORD', 'tho17092004'),
+        'HOST': os.getenv('POSTGRES_HOST', 'localhost'),
+        'PORT': os.getenv('POSTGRES_PORT', '5433'),
     }
 }
 

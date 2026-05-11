@@ -17,6 +17,18 @@ services:
       RABBITMQ_DEFAULT_PASS: bookstore123
     ports: ["5672:5672", "15672:15672"]
 
+  neo4j:
+    image: neo4j:5.26
+    environment:
+      NEO4J_AUTH: neo4j/neo4j12345
+      NEO4J_dbms_memory_pagecache_size: 512M
+      NEO4J_dbms_memory_heap_initial__size: 512M
+      NEO4J_dbms_memory_heap_max__size: 512M
+    ports: ["7474:7474", "7687:7687"]
+    volumes:
+      - neo4j_data:/data
+      - neo4j_logs:/logs
+
   user-service:
     build: ./user-service
     depends_on:
@@ -115,11 +127,12 @@ services:
       - rabbitmq
       - order-service
       - product-service
+      - neo4j
     environment:
       SERVICE_SHARED_TOKEN: bookstore-internal-token
       RABBITMQ_URL: amqp://bookstore:bookstore123@rabbitmq:5672/
       REVIEW_EVENT_QUEUE: review.events
-      NEO4J_URI: bolt://host.docker.internal:7687
+      NEO4J_URI: bolt://neo4j:7687
       NEO4J_USER: neo4j
       NEO4J_PASSWORD: neo4j12345
       NEO4J_DATABASE: neo4j
@@ -162,3 +175,5 @@ services:
 
 volumes:
   postgres_data: {}
+  neo4j_data: {}
+  neo4j_logs: {}

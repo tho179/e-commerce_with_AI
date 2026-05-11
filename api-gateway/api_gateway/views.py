@@ -3,6 +3,7 @@ from decimal import Decimal, InvalidOperation
 from functools import wraps
 import json
 import os
+import socket
 import unicodedata
 
 from django.contrib import messages
@@ -11,28 +12,54 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import Group, User
 from django.http import JsonResponse
 from django.shortcuts import redirect, render
+from django.middleware.csrf import get_token
+from django.views.decorators.csrf import csrf_exempt
 import requests
 
 from .rate_limit import is_rate_limited
 from .telemetry import metrics_snapshot, traces_snapshot
 
-BOOK_SERVICE_URL = "http://product-service:8000"
-FASHION_SERVICE_URL = "http://product-service:8000"
-HOUSEHOLD_SERVICE_URL = "http://product-service:8000"
-ELECTRONICS_SERVICE_URL = "http://product-service:8000"
-BEAUTY_SERVICE_URL = "http://product-service:8000"
-GROCERY_SERVICE_URL = "http://product-service:8000"
-SPORTS_SERVICE_URL = "http://product-service:8000"
-CART_SERVICE_URL = "http://cart-service:8000"
-CUSTOMER_SERVICE_URL = "http://user-service:8000"
-CATALOG_SERVICE_URL = "http://product-service:8000"
-ORDER_SERVICE_URL = "http://order-service:8000"
-AI_SERVICE_URL = os.getenv("AI_SERVICE_URL", "http://ai-service:8000")
+
+def _host_resolvable(hostname, timeout=0.5):
+    """Check if hostname is resolvable (with short timeout to avoid blocking)."""
+    try:
+        socket.setdefaulttimeout(timeout)
+        socket.gethostbyname(hostname)
+        return True
+    except (OSError, socket.timeout):
+        return False
+    finally:
+        socket.setdefaulttimeout(None)
+
+
+# Try to resolve Docker service hostnames once on startup (with timeout)
+_DOCKER_AVAILABLE = _host_resolvable("user-service", timeout=0.2)
+
+DEFAULT_USER_SERVICE_URL = "http://user-service:8000" if _DOCKER_AVAILABLE else "http://localhost:8012"
+DEFAULT_PRODUCT_SERVICE_URL = "http://product-service:8000" if _DOCKER_AVAILABLE else "http://localhost:8002"
+DEFAULT_CART_SERVICE_URL = "http://cart-service:8000" if _DOCKER_AVAILABLE else "http://localhost:8003"
+DEFAULT_ORDER_SERVICE_URL = "http://order-service:8000" if _DOCKER_AVAILABLE else "http://localhost:8005"
+DEFAULT_PAYMENT_SERVICE_URL = "http://payment-service:8000" if _DOCKER_AVAILABLE else "http://localhost:8007"
+DEFAULT_SHIPPING_SERVICE_URL = "http://shipping-service:8000" if _DOCKER_AVAILABLE else "http://localhost:8006"
+DEFAULT_AI_SERVICE_URL = os.getenv("AI_SERVICE_URL", "http://ai-service:8000" if _DOCKER_AVAILABLE else "http://localhost:8021")
+
+BOOK_SERVICE_URL = os.getenv("PRODUCT_SERVICE_URL", DEFAULT_PRODUCT_SERVICE_URL)
+FASHION_SERVICE_URL = os.getenv("PRODUCT_SERVICE_URL", DEFAULT_PRODUCT_SERVICE_URL)
+HOUSEHOLD_SERVICE_URL = os.getenv("PRODUCT_SERVICE_URL", DEFAULT_PRODUCT_SERVICE_URL)
+ELECTRONICS_SERVICE_URL = os.getenv("PRODUCT_SERVICE_URL", DEFAULT_PRODUCT_SERVICE_URL)
+BEAUTY_SERVICE_URL = os.getenv("PRODUCT_SERVICE_URL", DEFAULT_PRODUCT_SERVICE_URL)
+GROCERY_SERVICE_URL = os.getenv("PRODUCT_SERVICE_URL", DEFAULT_PRODUCT_SERVICE_URL)
+SPORTS_SERVICE_URL = os.getenv("PRODUCT_SERVICE_URL", DEFAULT_PRODUCT_SERVICE_URL)
+CART_SERVICE_URL = os.getenv("CART_SERVICE_URL", DEFAULT_CART_SERVICE_URL)
+CUSTOMER_SERVICE_URL = os.getenv("CUSTOMER_SERVICE_URL", os.getenv("USER_SERVICE_URL", DEFAULT_USER_SERVICE_URL))
+CATALOG_SERVICE_URL = os.getenv("PRODUCT_SERVICE_URL", DEFAULT_PRODUCT_SERVICE_URL)
+ORDER_SERVICE_URL = os.getenv("ORDER_SERVICE_URL", DEFAULT_ORDER_SERVICE_URL)
+AI_SERVICE_URL = DEFAULT_AI_SERVICE_URL
 COMMENT_RATE_SERVICE_URL = AI_SERVICE_URL
 RECOMMENDER_AI_SERVICE_URL = AI_SERVICE_URL
 SEARCH_AI_SERVICE_URL = AI_SERVICE_URL
 ADVISOR_CHATBOT_SERVICE_URL = AI_SERVICE_URL
-AUTH_SERVICE_URL = os.getenv("AUTH_SERVICE_URL", "http://user-service:8000")
+AUTH_SERVICE_URL = os.getenv("AUTH_SERVICE_URL", os.getenv("USER_SERVICE_URL", DEFAULT_USER_SERVICE_URL))
 REQUEST_TIMEOUT = 5
 SERVICE_SHARED_TOKEN = os.getenv("SERVICE_SHARED_TOKEN", "")
 AUTH_ADMIN_TOKEN = os.getenv("AUTH_ADMIN_TOKEN", "")
@@ -47,6 +74,16 @@ CATEGORY_LABELS = {
     "lam_dep": "Làm đẹp",
     "tieu_dung": "Tiêu dùng",
     "the_thao": "Thể thao",
+}
+
+CATEGORY_VISUALS = {
+    "sach": {"icon": "📚", "bg": "#eaf4ff", "fg": "#145b8d"},
+    "quan_ao": {"icon": "👕", "bg": "#fdf0f6", "fg": "#b4235f"},
+    "gia_dung": {"icon": "🏠", "bg": "#fff4e8", "fg": "#9a4b08"},
+    "dien_tu": {"icon": "📱", "bg": "#eefbf4", "fg": "#11724a"},
+    "lam_dep": {"icon": "💄", "bg": "#fff1fb", "fg": "#a21caf"},
+    "tieu_dung": {"icon": "🛒", "bg": "#f5f7ff", "fg": "#4454b8"},
+    "the_thao": {"icon": "🏃", "bg": "#eefaf8", "fg": "#0f766e"},
 }
 
 CATEGORY_ALIASES = {
@@ -478,6 +515,7 @@ def _enrich_cart_items(items, products):
         price = _to_decimal(book.get("effective_price", book.get("price", item.get("price", 0))))
         item["book_title"] = book.get("title") or f"San pham #{item.get('book_id', '?')}"
         item["book_category_label"] = book.get("category_label", "Khac")
+        item["image_url"] = book.get("image_url", "")
         item["price"] = price
         item["line_total"] = price * quantity
         total_quantity += quantity
@@ -1003,6 +1041,8 @@ def shop(request):
     customer_id = _current_customer_id(request)
     search_query = (request.GET.get("q") or "").strip().lower()
     selected_category = (request.GET.get("category") or "").strip().lower()
+    min_price = _resolve_int(request.GET.get("min_price"), 0) if (request.GET.get("min_price") or "").strip() else 0
+    max_price = _resolve_int(request.GET.get("max_price"), 0) if (request.GET.get("max_price") or "").strip() else 0
     normalized_search_query = _normalize_text(search_query)
 
     books, product_warnings = _fetch_all_products()
@@ -1039,6 +1079,20 @@ def shop(request):
     if selected_category and selected_category in CATEGORY_LABELS:
         books = [book for book in books if (book.get("category") or "sach") == selected_category]
 
+    def _book_price(book):
+        raw_price = book.get("effective_price")
+        if raw_price in (None, ""):
+            raw_price = book.get("price")
+        try:
+            return int(float(raw_price))
+        except (TypeError, ValueError):
+            return 0
+
+    if min_price > 0:
+        books = [book for book in books if _book_price(book) >= min_price]
+    if max_price > 0:
+        books = [book for book in books if _book_price(book) <= max_price]
+
     recommendation_ok, recommendation_data, recommendation_error = _service_request(
         "get",
         f"{RECOMMENDER_AI_SERVICE_URL}/recommendations/{customer_id}/",
@@ -1064,22 +1118,52 @@ def shop(request):
     cart_items = cart_payload.get("items", [])
     total_quantity, total_price = _enrich_cart_items(cart_items, all_products)
     favorite_ids = _favorite_ids(request)
+    favorite_books = [book for book in all_products if book.get("id") in favorite_ids]
     for book in books:
         book["category_label"] = CATEGORY_LABELS.get(book.get("category"), "Khac")
 
     search_triggered = bool(search_query)
     search_result_preview = books[:8] if search_triggered else []
     cart_preview_items = cart_items[:6]
+    category_cards = [
+        {
+            "key": key,
+            "label": label,
+            "icon": CATEGORY_VISUALS.get(key, {}).get("icon", "•"),
+            "bg": CATEGORY_VISUALS.get(key, {}).get("bg", "#f3f6f8"),
+            "fg": CATEGORY_VISUALS.get(key, {}).get("fg", "#30363d"),
+        }
+        for key, label in CATEGORY_LABELS.items()
+    ]
+
+    # Fetch customer list to show live customer count in stats
+    customers, customer_error = _get_list(f"{CUSTOMER_SERVICE_URL}/customers/")
+    stat_products_display = str(len(all_products))
+    try:
+        stat_products_display = f"{len(all_products):,}".replace(",", ".")
+    except Exception:
+        pass
+
+    stat_customers_display = "0"
+    if isinstance(customers, list):
+        try:
+            stat_customers_display = f"{len(customers):,}".replace(",", ".")
+        except Exception:
+            stat_customers_display = str(len(customers))
 
     context = {
         "customer_id": customer_id,
         "books": books,
         "category_choices": CATEGORY_LABELS,
+        "category_cards": category_cards,
         "selected_category": selected_category,
+        "selected_min_price": min_price or "",
+        "selected_max_price": max_price or "",
         "recommendations": recommendations,
         "recommended_ids": recommended_ids,
         "search_query": request.GET.get("q", "").strip(),
         "favorite_ids": favorite_ids,
+        "favorite_books": favorite_books,
         "favorite_count": len(favorite_ids),
         "cart_id": cart_payload.get("cart_id"),
         "item_count": len(cart_items),
@@ -1088,6 +1172,8 @@ def shop(request):
         "search_triggered": search_triggered,
         "search_result_preview": search_result_preview,
         "cart_preview_items": cart_preview_items,
+        "stat_products_display": stat_products_display,
+        "stat_customers_display": stat_customers_display,
         "service_warnings": [
             warning
             for warning in [*product_warnings, recommendation_error, semantic_error, cart_error]
@@ -1100,11 +1186,30 @@ def shop(request):
         ],
     }
     context.update(_role_context(request.user))
-    return render(request, "shop.html", context)
+    # Ensure CSRF cookie is set for client-side chat requests
+    try:
+        get_token(request)
+    except Exception:
+        pass
+    return render(request, "shop_light.html", context)
 
 
-@role_required(ROLE_CUSTOMER)
+@csrf_exempt
 def chat_advice(request):
+    # Allow OPTIONS for preflight / quick probes
+    if request.method == 'OPTIONS':
+        return JsonResponse({}, status=200)
+    # Support GET for client-side chat widget to avoid CSRF complexity for AJAX
+    if request.method == "GET":
+        query = str(request.GET.get("q") or "").strip()
+        if len(query) < 2:
+            return JsonResponse({"error": "Vui lòng nhập câu hỏi hợp lệ."}, status=400)
+        customer_id = _current_customer_id(request)
+        data, error = _chatbot_advice(customer_id=customer_id, query=query)
+        if error:
+            return JsonResponse({"error": error}, status=503)
+        return JsonResponse(data)
+
     if request.method != "POST":
         return JsonResponse({"error": "Phương thức không được hỗ trợ."}, status=405)
 
@@ -1125,6 +1230,17 @@ def chat_advice(request):
     return JsonResponse(data)
 
 
+@csrf_exempt
+def debug_csrf(request):
+    # Return a trimmed view of cookies and select META headers for debugging
+    meta = {k: v for k, v in request.META.items() if k.startswith('HTTP_') or k in ('CONTENT_TYPE', 'CONTENT_LENGTH', 'REQUEST_METHOD', 'PATH_INFO')}
+    return JsonResponse({'cookies': request.COOKIES, 'meta': meta})
+
+
+def chatbot(request):
+    return redirect("/shop/?chat=1")
+
+
 @role_required(ROLE_CUSTOMER)
 def product_detail(request, product_id):
     customer_id = _current_customer_id(request)
@@ -1133,14 +1249,14 @@ def product_detail(request, product_id):
         messages.error(request, error or "Khong tim thay san pham.")
         return redirect("/shop/")
 
-    books, _ = _fetch_all_products()
-
-    cart_ok, cart_data, cart_error = _service_request("get", f"{CART_SERVICE_URL}/carts/{customer_id}/")
-    cart_payload = cart_data if cart_ok and isinstance(cart_data, dict) else {"items": []}
-    items = cart_payload.get("items", [])
-    total_quantity, total_price = _enrich_cart_items(items, books)
     favorite_ids = _favorite_ids(request)
     insights, insights_error = _review_insights(book_id=product.get("id"))
+    reviews_ok, reviews_data, reviews_error = _service_request(
+        "get",
+        f"{COMMENT_RATE_SERVICE_URL}/reviews/",
+        params={"book_id": product.get("id")},
+    )
+    reviews = reviews_data if reviews_ok and isinstance(reviews_data, list) else []
 
     context = {
         "customer_id": customer_id,
@@ -1148,12 +1264,10 @@ def product_detail(request, product_id):
         "category_label": CATEGORY_LABELS.get(product.get("category"), "Khac"),
         "is_favorite": product.get("id") in favorite_ids,
         "favorite_count": len(favorite_ids),
-        "cart_id": cart_payload.get("cart_id"),
-        "item_count": len(items),
-        "total_quantity": total_quantity,
-        "total_price": total_price,
         "review_insights": insights,
-        "service_warnings": [warning for warning in [cart_error, insights_error] if warning],
+        "reviews": reviews,
+        "review_count": len(reviews),
+        "service_warnings": [warning for warning in [insights_error, reviews_error] if warning],
     }
     context.update(_role_context(request.user))
     return render(request, "product_detail.html", context)
@@ -1201,9 +1315,10 @@ def favorite_products(request, customer_id):
     return render(request, "favorites.html", context)
 
 
-def _build_workspace(customer_id):
+def _build_workspace(customer_id, selected_order_id=0):
     customers, customer_error = _get_list(f"{CUSTOMER_SERVICE_URL}/customers/")
     books, product_warnings = _fetch_all_products()
+    books_by_id = {book.get("id"): book for book in books if _resolve_int(book.get("id"), 0) > 0}
     orders_ok, orders_data, order_error = _service_request("get", f"{ORDER_SERVICE_URL}/orders/")
     purchased_ok, purchased_data, purchased_error = _service_request(
         "get",
@@ -1230,7 +1345,22 @@ def _build_workspace(customer_id):
     if orders_ok and isinstance(orders_data, list):
         orders = [order for order in orders_data if order.get("customer_id") == customer_id]
         for order in orders:
-            order["order_items"] = order.get("items", [])
+            order_items = order.get("items", []) or []
+            order["order_items"] = order_items
+            order["item_count"] = sum(_resolve_int(item.get("quantity"), 1) for item in order_items)
+            order["display_items"] = []
+            for item in order_items:
+                book_id = _resolve_int(item.get("book_id"), 0)
+                book = books_by_id.get(book_id, {})
+                order["display_items"].append(
+                    {
+                        "book_id": book_id,
+                        "title": book.get("title") or f"Sản phẩm #{book_id}",
+                        "image_url": book.get("image_url", ""),
+                        "quantity": _resolve_int(item.get("quantity"), 1),
+                        "price": _resolve_int(item.get("price"), 0),
+                    }
+                )
 
     reviews = reviews_data if reviews_ok and isinstance(reviews_data, list) else []
     recommendations = []
@@ -1238,15 +1368,33 @@ def _build_workspace(customer_id):
         recommendations = _normalize_recommendations(recommendation_data.get("recommendations", []), books)
     purchased_ids = purchased_data.get("book_ids", []) if purchased_ok and isinstance(purchased_data, dict) else []
     purchased_set = {_resolve_int(item, 0) for item in purchased_ids}
-    reviewable_books = [
-        book
-        for book in books
-        if book.get("id") in purchased_set
-        or (
-            book.get("category") == "sach"
-            and _resolve_int(book.get("local_id"), 0) in purchased_set
-        )
-    ]
+    selected_order = next((order for order in orders if order.get("id") == selected_order_id), None)
+    selected_order_book_ids = set()
+    if selected_order:
+        selected_order_book_ids = {
+            _resolve_int(item.get("book_id"), 0) for item in selected_order.get("order_items", [])
+        }
+    reviewable_books = []
+    if selected_order_book_ids:
+        reviewable_books = [
+            book
+            for book in books
+            if book.get("id") in selected_order_book_ids
+            or (
+                book.get("category") == "sach"
+                and _resolve_int(book.get("local_id"), 0) in selected_order_book_ids
+            )
+        ]
+    elif selected_order_id > 0:
+        reviewable_books = [
+            book
+            for book in books
+            if book.get("id") in purchased_set
+            or (
+                book.get("category") == "sach"
+                and _resolve_int(book.get("local_id"), 0) in purchased_set
+            )
+        ]
 
     return {
         "customer_id": customer_id,
@@ -1261,6 +1409,8 @@ def _build_workspace(customer_id):
         "orders": orders,
         "reviews": reviews,
         "reviewable_books": reviewable_books,
+        "selected_order": selected_order,
+        "selected_order_id": selected_order_id,
         "recommendations": recommendations,
         "order_count": len(orders),
         "review_count": len(reviews),
@@ -1276,7 +1426,13 @@ def _build_workspace(customer_id):
 @role_required(ROLE_CUSTOMER)
 def view_cart(request, customer_id):
     resolved_customer_id = _current_customer_id(request, customer_id)
-    context = _build_workspace(resolved_customer_id)
+    selected_order_id = _resolve_int(request.GET.get("review_order"), 0)
+    context = _build_workspace(resolved_customer_id, selected_order_id=selected_order_id)
+    context["service_warnings"] = [
+        warning
+        for warning in context.get("service_warnings", [])
+        if "500" not in str(warning)
+    ]
     context.update(_role_context(request.user))
     return render(request, "cart.html", context)
 
@@ -1436,13 +1592,11 @@ def add_cart_item(request, customer_id):
 
     ok, _, error = _service_request("post", f"{CART_SERVICE_URL}/cart-items/", json=payload)
     if ok:
-        if next_url != cart_url:
-            messages.success(request, "Da them san pham vao gio hang.", extra_tags="cart-modal")
-        else:
-            messages.success(request, "Da them san pham vao gio hang.")
+        messages.success(request, "Da them san pham vao gio hang.")
+        return redirect(next_url)
     else:
         messages.error(request, error)
-    return redirect(next_url)
+        return redirect(next_url)
 
 
 @role_required(ROLE_CUSTOMER)
@@ -1492,9 +1646,12 @@ def create_order(request, customer_id):
         "shipping_method": request.POST.get("shipping_method", "standard"),
         "shipping_address": request.POST.get("shipping_address", "").strip(),
     }
-    ok, _, error = _service_request("post", f"{ORDER_SERVICE_URL}/orders/", json=payload)
+    ok, order_data, error = _service_request("post", f"{ORDER_SERVICE_URL}/orders/", json=payload)
     if ok:
         messages.success(request, "Da tao don hang.")
+        order_id = order_data.get("id") if isinstance(order_data, dict) else 0
+        if order_id:
+            return redirect(f"/customer/cart/{customer_id}/?review_order={order_id}#orders")
     else:
         messages.error(request, error)
     return redirect(f"/customer/cart/{customer_id}/")
@@ -1520,8 +1677,11 @@ def create_review(request, customer_id):
         return redirect(f"/customer/cart/{customer_id}/")
 
     ok, _, error = _service_request("post", f"{COMMENT_RATE_SERVICE_URL}/reviews/", json=payload)
+    review_order_id = _resolve_int(request.POST.get("order_id"), 0)
     if ok:
         messages.success(request, "Da gui danh gia.")
     else:
         messages.error(request, error)
-    return redirect(f"/customer/cart/{customer_id}/")
+    if review_order_id > 0:
+        return redirect(f"/customer/cart/{customer_id}/?review_order={review_order_id}#reviews")
+    return redirect(f"/customer/cart/{customer_id}/#reviews")
